@@ -1,0 +1,76 @@
+# MoaOffice iOS — Codemagic (클라우드 Mac) 빌드
+# 1) ios-test    : Apple 계정 없이 시뮬레이터에서 빌드 + 화면 테스트 + 스크린샷 (push 할 때마다 자동)
+# 2) ios-release : App Store Connect API 키로 서명 → TestFlight 업로드 (수동 실행)
+workflows:
+  ios-test:
+    name: iOS simulator test
+    instance_type: mac_mini_m2
+    max_build_duration: 45
+    environment:
+      xcode: latest
+    triggering:
+      events: [push]
+      branch_patterns:
+        - pattern: main
+    scripts:
+      - name: Install XcodeGen
+        script: brew install xcodegen
+      - name: Generate Xcode project
+        script: xcodegen generate
+      - name: Build & UI test on simulator
+        script: |
+          set -o pipefail
+          SIM=$(xcrun simctl list devices available -j | python3 -c "import json,sys; d=json.load(sys.stdin)['devices']; c=[x for k,v in d.items() if 'iOS' in k for x in v if x['name'].startswith('iPhone') and 'Pro Max' in x['name']] or [x for k,v in d.items() if 'iOS' in k for x in v if x['name'].startswith('iPhone')]; print(c[-1]['udid'])")
+          echo "Simulator: $SIM"
+          xcodebuild test -project MoaOffice.xcodeproj -scheme MoaOffice \
+            -destination "id=$SIM" -resultBundlePath build/Results.xcresult \
+            CODE_SIGNING_ALLOWED=NO | xcpretty
+      - name: Export screenshots
+        script: |
+          mkdir -p build/screens
+          xcrun xcresulttool export attachments --path build/Results.xcresult --output-path build/screens || true
+          ls -la build/screens
+        ignore_failure: true
+    artifacts:
+      - build/screens/*.png
+      - build/screens/*.json
+
+  ios-release:
+    name: iOS TestFlight
+    instance_type: mac_mini_m2
+    max_build_duration: 60
+    integrations:
+      app_store_connect: MoaOffice ASC
+    environment:
+      xcode: latest
+      ios_signing:
+        distribution_type: app_store
+        bundle_identifier: com.moaoffice.app
+      groups:
+        - admob   # GAD_APP_ID, GAD_BANNER_ID, GAD_INTERSTITIAL_ID (실제 AdMob iOS ID)
+      vars:
+        APP_STORE_APPLE_ID: "0"   # App Store Connect 앱 생성 후 Apple ID 숫자로 교체
+    scripts:
+      - name: Install XcodeGen
+        script: brew install xcodegen
+      - name: Real AdMob IDs
+        script: |
+          if [ -n "$GAD_APP_ID" ]; then
+            sed -i '' "s|GAD_APP_ID: .*|GAD_APP_ID: $GAD_APP_ID|; s|GAD_BANNER_ID: .*|GAD_BANNER_ID: $GAD_BANNER_ID|; s|GAD_INTERSTITIAL_ID: .*|GAD_INTERSTITIAL_ID: $GAD_INTERSTITIAL_ID|" project.yml
+          fi
+      - name: Generate Xcode project
+        script: xcodegen generate
+      - name: Use signing profiles
+        script: xcode-project use-profiles
+      - name: Build number
+        script: |
+          LATEST=$(app-store-connect get-latest-testflight-build-number "$APP_STORE_APPLE_ID" || echo 0)
+          agvtool new-version -all $((LATEST + 1))
+      - name: Build ipa
+        script: xcode-project build-ipa --project MoaOffice.xcodeproj --scheme MoaOffice
+    artifacts:
+      - build/ios/ipa/*.ipa
+    publishing:
+      app_store_connect:
+        auth: integration
+        submit_to_testflight: true

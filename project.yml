@@ -1,0 +1,63 @@
+name: MoaOffice
+options:
+  bundleIdPrefix: com.moaoffice
+  deploymentTarget:
+    iOS: "16.0"
+  developmentLanguage: en
+  createIntermediateGroups: true
+settings:
+  base:
+    MARKETING_VERSION: "1.0.0"
+    CURRENT_PROJECT_VERSION: "1"
+    SWIFT_VERSION: "5.0"
+    DEVELOPMENT_TEAM: ""
+packages:
+  GoogleMobileAds:
+    url: https://github.com/googleads/swift-package-manager-google-mobile-ads
+    from: "12.0.0"
+targets:
+  MoaOffice:
+    type: application
+    platform: iOS
+    sources:
+      - path: MoaOffice/Sources
+      - path: MoaOffice/Resources
+        excludes:
+          - "Demo"
+      - path: MoaOffice/Resources/Demo
+        type: folder
+        buildPhase: resources
+      - path: MoaOffice/Products.storekit
+        buildPhase: none
+    dependencies:
+      - package: GoogleMobileAds
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.moaoffice.app
+        PRODUCT_NAME: MoaOffice
+        INFOPLIST_FILE: MoaOffice/Info.plist
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+        ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME: AccentColor
+        TARGETED_DEVICE_FAMILY: "1,2"
+        CODE_SIGN_STYLE: Automatic
+        ENABLE_USER_SCRIPT_SANDBOXING: NO
+        # 실제 AdMob iOS ID 는 Codemagic 환경변수로 주입한다. 비어 있으면 Google 테스트 ID.
+        GAD_APP_ID: ca-app-pub-3940256099942544~1458002511
+        GAD_BANNER_ID: ca-app-pub-3940256099942544/2934735716
+        GAD_INTERSTITIAL_ID: ca-app-pub-3940256099942544/4411468910
+    scheme:
+      testTargets:
+        - MoaOfficeUITests
+      storeKitConfiguration: MoaOffice/Products.storekit
+  MoaOfficeUITests:
+    type: bundle.ui-testing
+    platform: iOS
+    sources:
+      - path: MoaOfficeUITests
+    dependencies:
+      - target: MoaOffice
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.moaoffice.app.uitests
+        GENERATE_INFOPLIST_FILE: YES
+        CODE_SIGN_STYLE: Automatic
