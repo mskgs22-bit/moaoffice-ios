@@ -187,7 +187,7 @@ struct CfbReader {
 
     private static func read(chainOf start: Int, size: Int, fat: [Int], b: [UInt8], secSize: Int) -> [UInt8] {
         var out: [UInt8] = []
-        out.reserveCapacity(size)
+        out.reserveCapacity(min(size, b.count))
         for s in sectors(start: start, fat: fat) {
             let off = (s + 1) * secSize
             guard off < b.count else { break }
@@ -205,7 +205,7 @@ struct CfbReader {
         guard let s = streams[path] else { return nil }
         if s.size < cutoff {
             var out: [UInt8] = []
-            out.reserveCapacity(s.size)
+            out.reserveCapacity(min(s.size, miniStream.count))
             var m = s.start
             var seen = Set<Int>()
             while m >= 0 && m < miniFat.count + 1 && !seen.contains(m) && out.count < s.size {

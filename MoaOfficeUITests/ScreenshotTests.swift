@@ -21,6 +21,7 @@ final class ScreenshotTests: XCTestCase {
 
         let files = ["Report.hwp", "Report.hwpx", "Guide.pdf", "Letter.docx", "Budget.xlsx", "Orders.csv"]
         for (i, f) in files.enumerated() {
+            if app.state != .runningForeground { app.launch(); sleep(2) }
             let row = app.buttons["file-\(f)"]
             if !row.waitForExistence(timeout: 5) { app.swipeUp() }
             guard row.waitForExistence(timeout: 5) else { XCTFail("missing \(f)"); continue }
@@ -28,10 +29,12 @@ final class ScreenshotTests: XCTestCase {
             sleep(4)
             shot(String(format: "%@_%02d_%@", prefix, i + 2, f.replacingOccurrences(of: ".", with: "_")))
             let close = app.buttons["close"]
+            if app.state != .runningForeground { XCTFail("crashed on \(f)"); continue }
             if close.waitForExistence(timeout: 5) { close.tap() }
             sleep(1)
         }
 
+        if app.state != .runningForeground { app.launch(); sleep(2) }
         app.buttons["settings"].tap()
         sleep(1)
         shot("\(prefix)_08_settings")
