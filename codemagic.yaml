@@ -1,0 +1,79 @@
+# 포켓 스캐너 iOS — Codemagic 클라우드 Mac 빌드 (Mac 없이 App Store 업로드)
+workflows:
+  pocket-ios-release:
+    name: Pocket Scanner iOS (App Store)
+    instance_type: mac_mini_m2
+    max_build_duration: 60
+    integrations:
+      app_store_connect: "MoaOffice ASC"
+    environment:
+      xcode: latest
+      node: 22
+      cocoapods: default
+      ios_signing:
+        distribution_type: app_store
+        bundle_identifier: kr.pocketscanner.app
+      vars:
+        APP_STORE_APPLE_ID: "__ASC_APP_ID__"
+        GAD_IOS_APP_ID: "__GAD_IOS_APP_ID__"
+        APP_VERSION: "1.0.0"
+    scripts:
+      - name: Install packages
+        script: npm install
+      - name: Copy web libraries
+        script: npm run libs
+      - name: Add iOS platform
+        script: npx cap add ios
+      - name: Build number
+        script: |
+          LATEST=$(app-store-connect get-latest-app-store-build-number "$APP_STORE_APPLE_ID" 2>/dev/null || echo 0)
+          TF=$(app-store-connect get-latest-testflight-build-number "$APP_STORE_APPLE_ID" 2>/dev/null || echo 0)
+          [ "$TF" -gt "$LATEST" ] 2>/dev/null && LATEST=$TF
+          echo "BUILD_NUMBER=$((LATEST + 1))" >> $CM_ENV
+      - name: iOS print plugin + project settings
+        script: |
+          cp ios-extra/WebPrintPlugin.swift ios-extra/MyViewController.swift ios/App/App/
+          ruby ios-extra/setup-ios.rb
+          sed -i '' 's/customClass="CAPBridgeViewController" customModule="Capacitor"/customClass="MyViewController" customModule="App" customModuleProvider="target"/' ios/App/App/Base.lproj/Main.storyboard
+          grep -n "MyViewController" ios/App/App/Base.lproj/Main.storyboard
+      - name: Info.plist (camera, ads, files)
+        script: |
+          P=ios/App/App/Info.plist
+          PB=/usr/libexec/PlistBuddy
+          set_str() { $PB -c "Delete :$1" "$P" 2>/dev/null; $PB -c "Add :$1 string $2" "$P"; }
+          set_bool() { $PB -c "Delete :$1" "$P" 2>/dev/null; $PB -c "Add :$1 bool $2" "$P"; }
+          set_str NSCameraUsageDescription "문서와 QR 코드를 촬영하려면 카메라 접근이 필요해요."
+          set_str NSPhotoLibraryUsageDescription "앨범의 사진을 불러와 스캔하려면 사진 접근이 필요해요."
+          set_str NSPhotoLibraryAddUsageDescription "스캔한 이미지를 앨범에 저장하려면 사진 접근이 필요해요."
+          set_str NSUserTrackingUsageDescription "허용하면 더 관련성 높은 광고가 표시돼요. 사진과 문서는 기기 밖으로 나가지 않아요."
+          set_str GADApplicationIdentifier "$GAD_IOS_APP_ID"
+          set_str CFBundleDevelopmentRegion "ko"
+          set_str CFBundleDisplayName "포켓 스캐너"
+          set_bool ITSAppUsesNonExemptEncryption false
+          set_bool UIFileSharingEnabled true
+          set_bool LSSupportsOpeningDocumentsInPlace true
+          $PB -c "Delete :SKAdNetworkItems" "$P" 2>/dev/null
+          $PB -c "Add :SKAdNetworkItems array" "$P"
+          i=0
+          for id in cstr6suwn9 4fzdc2evr5 2fnua5tdw4 ydx93a7ass p78axxw29g v72qych5uu ludvb6z3bs cp8zw746q7 3sh42y64q3 c6k4g5qg8m s39g8k73mm 3qy4746246 hs6bdukanm mlmmfzh3r3 v4nxqhlyqp wzmmz9fp6w su67r6k2v3 yclnxrl5pm 7ug5zh24hu gta9lk7p23 vutu7akeur y5ghdn5j9k v9wttpbfk9 n38lu8286q 47vhws6wlr kbd757ywx3 9t245vhmpl a2p9lx4jpn 22mmun2rn5 44jx6755aq k674qkevps 4468km3ulz 2u9pt9hc89 8s468mfl3y klf5c3l5u5 ppxm28t8ap kbmxgpxpgc uw77j35x4d 578prtvx9j 4dzt52r2t5 tl55sbb4fm c3frkrj4fj e5fvkxwrpn 8c4e2ghe7u 3rd42ekr43 97r2b46745 3qcr597p9d; do
+            $PB -c "Add :SKAdNetworkItems:$i dict" "$P"
+            $PB -c "Add :SKAdNetworkItems:$i:SKAdNetworkIdentifier string $id.skadnetwork" "$P"
+            i=$((i+1))
+          done
+          plutil -lint "$P"
+      - name: App icon & splash
+        script: npx capacitor-assets generate --ios || echo "아이콘 생성 건너뜀"
+      - name: Capacitor sync
+        script: npx cap sync ios
+      - name: Signing
+        script: xcode-project use-profiles
+      - name: Build IPA
+        script: |
+          xcode-project build-ipa --workspace ios/App/App.xcworkspace --scheme App
+    artifacts:
+      - build/ios/ipa/*.ipa
+      - /tmp/xcodebuild_logs/*.log
+    publishing:
+      app_store_connect:
+        auth: integration
+        submit_to_testflight: false

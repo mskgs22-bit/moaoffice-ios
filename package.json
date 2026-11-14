@@ -1,0 +1,31 @@
+{
+  "name": "pocket-scanner",
+  "version": "1.0.0",
+  "private": true,
+  "description": "포켓 스캐너 - 서버 없이 휴대폰에서 동작하는 문서 스캐너",
+  "scripts": {
+    "libs": "node scripts/copy-libs.js",
+    "setup": "npm run libs && npx cap add android && node scripts/setup-android.js && npx capacitor-assets generate --android && npx cap sync android",
+    "sync": "npm run libs && npx cap sync android",
+    "open": "npx cap open android"
+  },
+  "dependencies": {
+    "@capacitor-community/admob": "^7.0.0",
+    "@capacitor/android": "^7.0.0",
+    "@capacitor/app": "^7.0.0",
+    "@capacitor/core": "^7.0.0",
+    "@capacitor/filesystem": "^7.0.0",
+    "@capacitor/share": "^7.0.0",
+    "cordova-plugin-purchase": "^13.0.0",
+    "jsqr": "1.4.0",
+    "jszip": "3.10.1",
+    "pdf-lib": "1.17.1",
+    "pdfjs-dist": "3.11.174",
+    "qrcode-generator": "1.4.4",
+    "@capacitor/ios": "^7.0.0"
+  },
+  "devDependencies": {
+    "@capacitor/assets": "^3.0.0",
+    "@capacitor/cli": "^7.0.0"
+  }
+}

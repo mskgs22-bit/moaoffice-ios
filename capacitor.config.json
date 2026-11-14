@@ -1,0 +1,8 @@
+{
+  "appId": "kr.pocketscanner.app",
+  "appName": "포켓 스캐너",
+  "webDir": "www",
+  "android": {
+    "allowMixedContent": false
+  }
+}
