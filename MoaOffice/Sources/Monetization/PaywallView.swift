@@ -47,7 +47,7 @@ struct PaywallView: View {
                 }
                 .padding()
             }
-            .toolbar { ToolbarItem(placement: .navigationBarTrailing) { Button("Close") { dismiss() } } }
+            .toolbar { ToolbarItem(placement: .navigationBarTrailing) { Button("Close") { dismiss() }.accessibilityIdentifier("paywall-close") } }
             .alert(store.message ?? "", isPresented: Binding(get: { store.message != nil }, set: { if !$0 { store.message = nil } })) {
                 Button("OK", role: .cancel) {}
             }

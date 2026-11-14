@@ -69,6 +69,7 @@ struct HomeView: View {
                         Image(systemName: "chevron.right").foregroundStyle(.white.opacity(0.8))
                     }
                 }
+                .accessibilityIdentifier("remove-ads")
                 .listRowBackground(Color.brand)
             }
             Section("Recent documents") {

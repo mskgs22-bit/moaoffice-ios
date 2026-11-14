@@ -35,6 +35,16 @@ final class ScreenshotTests: XCTestCase {
         }
 
         if app.state != .runningForeground { app.launch(); sleep(2) }
+        // 구독 화면 (App Store 구독 심사용 스크린샷)
+        let removeAds = app.buttons["remove-ads"]
+        if removeAds.waitForExistence(timeout: 5) {
+            removeAds.tap()
+            sleep(4)
+            shot("\(prefix)_09_paywall")
+            let closeBtn = app.buttons["paywall-close"]
+            if closeBtn.waitForExistence(timeout: 3) { closeBtn.tap() }
+            sleep(1)
+        }
         app.buttons["settings"].tap()
         sleep(1)
         shot("\(prefix)_08_settings")
