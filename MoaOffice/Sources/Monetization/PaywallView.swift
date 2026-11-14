@@ -22,6 +22,13 @@ struct PaywallView: View {
 
                     if store.isAdFree {
                         Text("You are subscribed. Thank you!").font(.headline).foregroundStyle(Color.brand)
+                    } else if store.products.isEmpty && CommandLine.arguments.contains("-demo") {
+                        // 스크린샷용 (StoreKit 상품이 없는 시뮬레이터)
+                        ForEach([("Ad-free (Yearly)", "₩41,900 / 년"), ("Ad-free (Monthly)", "₩3,900 / 월")], id: \.0) { item in
+                            VStack(spacing: 2) { Text(LocalizedStringKey(item.0)).font(.headline); Text(item.1).font(.subheadline) }
+                                .frame(maxWidth: .infinity).padding(.vertical, 12)
+                                .background(Color.brand, in: RoundedRectangle(cornerRadius: 10)).foregroundStyle(.white)
+                        }
                     } else if store.products.isEmpty {
                         ProgressView().task { await store.load() }
                     } else {

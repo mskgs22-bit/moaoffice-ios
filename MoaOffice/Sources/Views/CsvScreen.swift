@@ -11,6 +11,7 @@ struct CsvScreen: View {
             if !loaded { ProgressView() }
             else if rows.isEmpty { ContentUnavailableCompat(title: "This file seems to be damaged.", system: "tablecells") }
             else {
+                GeometryReader { geo in
                 ScrollView([.horizontal, .vertical]) {
                     Grid(alignment: .leading, horizontalSpacing: 0, verticalSpacing: 0) {
                         ForEach(Array(rows.prefix(5000).enumerated()), id: \.offset) { r, row in
@@ -30,6 +31,8 @@ struct CsvScreen: View {
                         }
                     }
                     .textSelection(.enabled)
+                    .frame(minWidth: geo.size.width, minHeight: geo.size.height, alignment: .topLeading)
+                }
                 }
             }
         }
