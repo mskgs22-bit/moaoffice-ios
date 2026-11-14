@@ -26,7 +26,7 @@ final class ScreenshotTests: XCTestCase {
             if !row.waitForExistence(timeout: 5) { app.swipeUp() }
             guard row.waitForExistence(timeout: 5) else { XCTFail("missing \(f)"); continue }
             row.tap()
-            sleep(4)
+            sleep(f.hasSuffix(".docx") || f.hasSuffix(".xlsx") ? 10 : 4)
             shot(String(format: "%@_%02d_%@", prefix, i + 2, f.replacingOccurrences(of: ".", with: "_")))
             let close = app.buttons["close"]
             if app.state != .runningForeground { XCTFail("crashed on \(f)"); continue }

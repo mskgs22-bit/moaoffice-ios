@@ -31,6 +31,7 @@ struct DocumentScreen: View {
         case .pdf: PdfScreen(url: file.url)
         case .hwp: HwpScreen(url: file.url)
         case .image: ImageScreen(url: file.url)
+        case .office where file.url.pathExtension.lowercased() == "csv": CsvScreen(url: file.url)
         default: QuickLookView(url: file.url).ignoresSafeArea(edges: .bottom)
         }
     }

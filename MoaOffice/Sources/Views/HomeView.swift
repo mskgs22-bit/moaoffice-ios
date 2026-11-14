@@ -73,7 +73,8 @@ struct HomeView: View {
             }
             Section("Recent documents") {
                 ForEach(library.files) { f in
-                    Button { library.touch(f); library.opened = f } label: { FileRow(file: f) }
+                    Button { library.touch(f); library.opened = f } label: { FileRow(file: f).contentShape(Rectangle()) }
+                        .buttonStyle(.plain)
                         .accessibilityIdentifier("file-\(f.name)")
                 }
                 .onDelete { idx in idx.map { library.files[$0] }.forEach(library.delete) }
