@@ -38,7 +38,7 @@ targets:
         INFOPLIST_FILE: MoaOffice/Info.plist
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
         ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME: AccentColor
-        TARGETED_DEVICE_FAMILY: "1,2"
+        TARGETED_DEVICE_FAMILY: "1"
         CODE_SIGN_STYLE: Automatic
         ENABLE_USER_SCRIPT_SANDBOXING: NO
         # 실제 AdMob iOS ID 는 Codemagic 환경변수로 주입한다. 비어 있으면 Google 테스트 ID.
