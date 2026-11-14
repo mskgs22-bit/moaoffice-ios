@@ -17,7 +17,12 @@ struct DocumentScreen: View {
                             .accessibilityIdentifier("close")
                     }
                     ToolbarItem(placement: .navigationBarTrailing) {
-                        ShareLink(item: file.url) { Image(systemName: "square.and.arrow.up") }
+                        HStack(spacing: 16) {
+                            Button { DocPrinter.print(file.url) } label: { Image(systemName: "printer") }
+                                .accessibilityLabel(Text("Print"))
+                                .accessibilityIdentifier("print")
+                            ShareLink(item: file.url) { Image(systemName: "square.and.arrow.up") }
+                        }
                     }
                 }
                 .safeAreaInset(edge: .bottom) { AdBannerBar() }

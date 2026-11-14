@@ -30,6 +30,7 @@ MoaOffice opens all your everyday documents in one simple app — completely off
 • Export HWP/HWPX to PDF in one tap
 • Word (DOC, DOCX), Excel (XLS, XLSX) and CSV previews
 • Photoshop PSD/PSB images
+• Print any document with AirPrint
 • Open files from the Files app, Mail, KakaoTalk or any app with "Open in"
 
 Private by design: your files never leave your iPhone. No account, no upload.
@@ -48,6 +49,7 @@ MoaOffice is free with ads. Remove ads anytime with a monthly or yearly subscrip
 • 한글 문서를 PDF로 한 번에 내보내기
 • 워드(DOC·DOCX), 엑셀(XLS·XLSX), CSV 미리보기
 • 포토샵 PSD·PSB 이미지
+• 모든 문서 AirPrint 인쇄
 • 파일 앱, 메일, 카카오톡 등에서 '다른 앱으로 열기'로 바로 열기
 
 파일은 아이폰 밖으로 나가지 않습니다. 회원가입도, 업로드도 없습니다.
