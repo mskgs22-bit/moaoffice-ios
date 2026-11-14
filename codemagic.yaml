@@ -46,9 +46,11 @@ workflows:
       ios_signing:
         distribution_type: app_store
         bundle_identifier: com.moaoffice.app
-      groups:
-        - admob   # GAD_APP_ID, GAD_BANNER_ID, GAD_INTERSTITIAL_ID (실제 AdMob iOS ID)
       vars:
+        # 실제 AdMob iOS ID (공개 값 — 앱 바이너리에 그대로 들어감). 시뮬레이터 테스트는 Google 테스트 ID 사용
+        GAD_APP_ID: ca-app-pub-9038740106483632~8298285587
+        GAD_BANNER_ID: ca-app-pub-9038740106483632/2432724543
+        GAD_INTERSTITIAL_ID: ca-app-pub-9038740106483632/7493479531
         APP_STORE_APPLE_ID: "0"   # App Store Connect 앱 생성 후 Apple ID 숫자로 교체
     scripts:
       - name: Install XcodeGen
