@@ -1,0 +1,6 @@
+{
+  "appId": "kr.qrbarcodescanner.app",
+  "appName": "QR & Barcode Scanner",
+  "webDir": "www",
+  "ios": { "contentInset": "never", "backgroundColor": "#F4F6FA" }
+}

@@ -1,0 +1,26 @@
+{
+  "name": "qr-barcode-scanner",
+  "version": "1.0.0",
+  "private": true,
+  "description": "QR & Barcode Scanner - 큐싱 안전 검사, QR 만들기, 상품 바코드",
+  "scripts": {
+    "libs": "node scripts/copy-libs.js"
+  },
+  "dependencies": {
+    "@capacitor-community/admob": "^7.0.0",
+    "@capacitor/app": "^7.0.0",
+    "@capacitor/browser": "^7.0.0",
+    "@capacitor/core": "^7.0.0",
+    "@capacitor/filesystem": "^7.0.0",
+    "@capacitor/ios": "^7.0.0",
+    "@capacitor/share": "^7.0.0",
+    "@zxing/library": "0.21.3",
+    "cordova-plugin-purchase": "^13.0.0",
+    "jsqr": "1.4.0",
+    "qrcode-generator": "1.4.4"
+  },
+  "devDependencies": {
+    "@capacitor/assets": "^3.0.0",
+    "@capacitor/cli": "^7.0.0"
+  }
+}

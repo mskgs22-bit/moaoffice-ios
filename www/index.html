@@ -1,0 +1,662 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
+<meta name="format-detection" content="telephone=no">
+<title>QR &amp; Barcode Scanner</title>
+<script src="lib/jsQR.js"></script>
+<script src="lib/zxing.min.js"></script>
+<script src="lib/qrcode.js"></script>
+<style>
+:root{--pri:#1D4ED8;--pri-d:#1E3A8A;--pri-l:#DBEAFE;--bg:#F4F6FA;--card:#fff;--ink:#0F172A;--sub:#475569;--mute:#64748B;--line:#E2E8F0;--ok:#15803D;--ok-l:#DCFCE7;--warn:#C2410C;--warn-l:#FFF7ED;--bad:#B91C1C;--bad-l:#FEF2F2;--cyan:#22D3EE;--adh:0px;--tabh:60px;--sat:env(safe-area-inset-top);--sab:env(safe-area-inset-bottom)}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;height:100%;background:var(--bg);color:var(--ink);font-family:-apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo","Noto Sans KR",sans-serif;-webkit-text-size-adjust:100%;overscroll-behavior:none}
+body{-webkit-user-select:none;user-select:none}
+input,textarea,select{-webkit-user-select:text;user-select:text}
+button{font-family:inherit;color:inherit;cursor:pointer}
+a{color:var(--pri)}
+#view{position:fixed;left:0;right:0;top:0;bottom:calc(var(--tabh) + var(--sab) + var(--adh));overflow-y:auto;-webkit-overflow-scrolling:touch}
+body.notab #view{bottom:calc(var(--adh))}
+#tabs{position:fixed;left:0;right:0;bottom:var(--adh);height:calc(var(--tabh) + var(--sab));padding-bottom:var(--sab);background:#fff;border-top:1px solid var(--line);display:flex;z-index:20}
+body.notab #tabs{display:none}
+#tabs button{flex:1;border:0;background:none;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;font-size:11.5px;font-weight:600;color:var(--mute)}
+#tabs button.on{color:var(--pri);font-weight:800}
+.page{padding:calc(var(--sat) + 14px) 18px 28px}
+.hdr{display:flex;align-items:center;gap:6px;padding:calc(var(--sat) + 6px) 8px 6px;position:sticky;top:0;background:var(--bg);z-index:5}
+.hdr h1{font-size:18px;margin:0;font-weight:800;flex:1}
+.ibtn{width:44px;height:44px;border:0;background:none;border-radius:22px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.ttl{font-size:26px;font-weight:800;margin:0 0 4px}
+.muted{color:var(--sub)}
+.small{font-size:13px}
+.card{background:var(--card);border-radius:18px;padding:16px;margin-bottom:12px}
+.btn{height:52px;border-radius:15px;border:0;font-size:16px;font-weight:700;display:flex;align-items:center;justify-content:center;gap:8px;width:100%}
+.btn.pri{background:var(--pri);color:#fff}
+.btn.sec{background:#fff;border:1px solid #CBD5E1;color:var(--ink)}
+.btn.ghost{background:none;color:var(--pri);height:40px;font-size:14.5px}
+.btn:disabled{opacity:.5}
+.grid3{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
+.grid2{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+.act{height:66px;border-radius:16px;border:0;background:#fff;font-size:13px;font-weight:600;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:5px}
+.chip{height:36px;padding:0 14px;border-radius:18px;border:1px solid #CBD5E1;background:#fff;font-size:13.5px;font-weight:700;color:#334155;white-space:nowrap}
+.chip.on{background:var(--ink);border-color:var(--ink);color:#fff}
+.chips{display:flex;gap:8px;overflow-x:auto;padding-bottom:2px}
+.chips::-webkit-scrollbar{display:none}
+.fld{display:flex;flex-direction:column;gap:6px;margin-bottom:12px}
+.fld label{font-size:13px;color:var(--sub);font-weight:600}
+.inp{height:48px;border-radius:12px;border:1px solid #CBD5E1;padding:0 14px;font-size:16px;color:var(--ink);background:#fff;width:100%;outline:none}
+textarea.inp{height:110px;padding:12px 14px;resize:none;line-height:1.45}
+.inp:focus{border-color:var(--pri)}
+.row{display:flex;align-items:center;gap:12px}
+.list{background:#fff;border-radius:18px;overflow:hidden}
+.li{display:flex;align-items:center;gap:12px;padding:13px 14px;border-bottom:1px solid #F1F5F9;width:100%;border-left:0;border-right:0;border-top:0;background:#fff;text-align:left}
+.li:last-child{border-bottom:0}
+.ico{width:40px;height:40px;border-radius:12px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.ell{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.badge{font-size:11px;font-weight:800;border-radius:8px;padding:3px 8px;white-space:nowrap}
+.mono{font-family:ui-monospace,Menlo,monospace;word-break:break-all;-webkit-user-select:text;user-select:text}
+.brk{word-break:break-all;-webkit-user-select:text;user-select:text}
+/* scan */
+.cam{position:absolute;inset:0;background:#0B1220;overflow:hidden}
+.cam video{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+.cam .top{position:absolute;left:0;right:0;top:calc(var(--sat) + 10px);padding:0 16px;display:flex;justify-content:space-between;align-items:center;z-index:3}
+.cbtn{width:44px;height:44px;border-radius:22px;border:0;background:rgba(15,23,42,.55);color:#fff;display:flex;align-items:center;justify-content:center}
+.cbtn.on{background:#FDE68A;color:#0F172A}
+.seg{display:flex;background:rgba(15,23,42,.55);border-radius:22px;padding:4px}
+.seg button{height:36px;padding:0 15px;border-radius:18px;border:0;background:none;color:#fff;font-size:14px;font-weight:600}
+.seg button.on{background:#fff;color:#0F172A;font-weight:800}
+.vf{position:absolute;left:50%;top:44%;width:min(72vw,300px);height:min(72vw,300px);transform:translate(-50%,-50%);z-index:2}
+.vf i{position:absolute;width:52px;height:52px;border:5px solid var(--cyan)}
+.vf i:nth-child(1){left:0;top:0;border-right:0;border-bottom:0;border-top-left-radius:22px}
+.vf i:nth-child(2){right:0;top:0;border-left:0;border-bottom:0;border-top-right-radius:22px}
+.vf i:nth-child(3){left:0;bottom:0;border-right:0;border-top:0;border-bottom-left-radius:22px}
+.vf i:nth-child(4){right:0;bottom:0;border-left:0;border-top:0;border-bottom-right-radius:22px}
+.vf b{position:absolute;left:16px;right:16px;height:3px;border-radius:2px;background:var(--cyan);box-shadow:0 0 16px 3px rgba(34,211,238,.7);animation:sl 2.2s ease-in-out infinite}
+@keyframes sl{0%,100%{top:12%}50%{top:86%}}
+.shade{position:absolute;inset:0;z-index:1;pointer-events:none;box-shadow:0 0 0 2000px rgba(2,6,23,.45) inset}
+.hint{position:absolute;left:20px;right:20px;top:calc(44% + min(36vw,150px) + 22px);text-align:center;color:#fff;z-index:3}
+.hint b{display:block;font-size:16.5px}
+.hint span{font-size:13.5px;color:#CBD5E1}
+.batchbar{position:absolute;left:16px;right:16px;bottom:16px;z-index:3}
+.camerr{position:absolute;inset:0;background:#0B1220;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;color:#fff;text-align:center;padding:30px;z-index:2}
+/* sheets / dialogs */
+#ov{position:fixed;inset:0;z-index:50;display:none}
+#ov.on{display:block}
+#ov .bg{position:absolute;inset:0;background:rgba(2,6,23,.45)}
+.sheet{position:absolute;left:0;right:0;bottom:0;background:#fff;border-radius:22px 22px 0 0;padding:18px 16px calc(16px + var(--sab));max-height:85vh;overflow:auto}
+.dlg{position:absolute;left:22px;right:22px;top:50%;transform:translateY(-50%);background:#fff;border-radius:20px;padding:20px;max-height:80vh;overflow:auto}
+.dlg h3,.sheet h3{margin:0 0 10px;font-size:18px}
+.dbtns{display:flex;gap:10px;margin-top:16px}
+.dbtns .btn{height:48px;font-size:15px}
+#toast{position:fixed;left:50%;bottom:calc(var(--tabh) + var(--sab) + var(--adh) + 18px);transform:translateX(-50%);background:rgba(15,23,42,.92);color:#fff;padding:11px 18px;border-radius:14px;font-size:14px;font-weight:600;z-index:60;opacity:0;transition:opacity .2s;pointer-events:none;max-width:86vw;text-align:center}
+#toast.on{opacity:1}
+#busy{position:fixed;inset:0;z-index:70;background:rgba(2,6,23,.35);display:none;align-items:center;justify-content:center}
+#busy.on{display:flex}
+#busy div{background:#fff;border-radius:16px;padding:18px 22px;font-weight:700;display:flex;gap:10px;align-items:center}
+.spin{width:20px;height:20px;border-radius:50%;border:3px solid var(--pri-l);border-top-color:var(--pri);animation:sp 1s linear infinite}
+@keyframes sp{to{transform:rotate(360deg)}}
+/* verdict */
+.vd{border-radius:18px;padding:16px;margin-bottom:12px;border:1px solid}
+.vd.safe{background:#F0FDF4;border-color:#86EFAC}
+.vd.caution{background:var(--warn-l);border-color:#FDBA74}
+.vd.danger{background:var(--bad-l);border-color:#FCA5A5}
+.vd.wait{background:#fff;border-color:var(--line)}
+.ck{display:flex;gap:10px;align-items:flex-start;margin-top:10px}
+.ck svg{flex-shrink:0;margin-top:1px}
+.qrbox{display:flex;justify-content:center;padding:18px 0 14px}
+.qrbox canvas{max-width:100%;height:auto;border-radius:6px}
+.sw{width:44px;height:44px;border-radius:22px;border:3px solid #fff;box-shadow:0 0 0 1px var(--line);padding:0;flex-shrink:0}
+.sw.on{box-shadow:0 0 0 3px #93C5FD}
+.tgrid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:9px;margin:14px 0}
+.tbtn{height:76px;border-radius:16px;border:1px solid var(--line);background:#fff;font-size:12px;font-weight:700;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;color:#1E293B;padding:0}
+.tbtn.on{background:var(--pri);border-color:var(--pri);color:#fff}
+.pro-tag{font-size:11px;font-weight:800;color:#fff;background:var(--pri);border-radius:8px;padding:3px 8px}
+.sec-t{font-size:13px;font-weight:800;color:var(--sub);margin:18px 4px 8px}
+.empty{text-align:center;padding:50px 20px;color:var(--mute)}
+.plan{width:100%;min-height:68px;border-radius:16px;border:1px solid #CBD5E1;background:#fff;display:flex;align-items:center;gap:12px;padding:12px 16px;text-align:left;margin-bottom:10px}
+.plan.on{border:2px solid var(--pri);background:#EFF6FF}
+.radio{width:22px;height:22px;border-radius:11px;border:2px solid #94A3B8;flex-shrink:0}
+.plan.on .radio{border:7px solid var(--pri)}
+.bars{display:flex;justify-content:center;height:70px;margin:4px 0 8px}
+.bars i{display:block;height:100%}
+</style>
+</head>
+<body>
+<div id="view"></div>
+<nav id="tabs" aria-label="주 메뉴"></nav>
+<div id="ov"></div>
+<div id="toast" role="status"></div>
+<div id="busy"><div><span class="spin"></span><span id="busyt">잠시만요…</span></div></div>
+<script>
+'use strict';
+/* ---------- 기본 ---------- */
+const NATIVE=!!(window.Capacitor&&Capacitor.isNativePlatform&&Capacitor.isNativePlatform());
+const IOS=NATIVE&&!!(Capacitor.getPlatform&&Capacitor.getPlatform()==='ios');
+const STORE_NAME=IOS?'App Store':'Google Play';
+function plug(n){return window.Capacitor&&Capacitor.Plugins?Capacitor.Plugins[n]:null}
+const $=(s,r=document)=>r.querySelector(s);const $$=(s,r=document)=>[...r.querySelectorAll(s)];
+const sleep=ms=>new Promise(r=>setTimeout(r,ms));
+const esc=s=>String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const pad=n=>String(n).padStart(2,'0');
+function lsGet(k,d){try{const v=localStorage.getItem('qr_'+k);return v==null?d:JSON.parse(v)}catch(e){return d}}
+function lsSet(k,v){try{localStorage.setItem('qr_'+k,JSON.stringify(v))}catch(e){}}
+function uid(){return Date.now().toString(36)+Math.random().toString(36).slice(2,7)}
+function fmtTime(t){const d=new Date(t),n=new Date();const hm=`${pad(d.getHours())}:${pad(d.getMinutes())}`;
+  if(d.toDateString()===n.toDateString())return'오늘 '+hm;const y=new Date(n);y.setDate(n.getDate()-1);if(d.toDateString()===y.toDateString())return'어제 '+hm;
+  return(d.getFullYear()===n.getFullYear()?'':d.getFullYear()+'년 ')+`${d.getMonth()+1}월 ${d.getDate()}일`}
+let toastT=0;function toast(m,ms=2200){const t=$('#toast');t.textContent=m;t.classList.add('on');clearTimeout(toastT);toastT=setTimeout(()=>t.classList.remove('on'),ms)}
+async function withBusy(msg,fn){$('#busyt').textContent=msg;$('#busy').classList.add('on');try{return await fn()}finally{$('#busy').classList.remove('on')}}
+function closeOv(){const o=$('#ov');o.classList.remove('on');o.innerHTML=''}
+function dialog(title,body,btns){return new Promise(res=>{const o=$('#ov');
+  o.innerHTML=`<div class="bg"></div><div class="dlg" role="dialog" aria-modal="true"><h3>${esc(title)}</h3><div>${body}</div><div class="dbtns">${btns.map((b,i)=>`<button class="btn ${b.cls||'sec'}" data-i="${i}">${esc(b.label)}</button>`).join('')}</div></div>`;
+  o.classList.add('on');$('.bg',o).onclick=()=>{closeOv();res(null)};
+  $$('.dbtns button',o).forEach(el=>el.onclick=()=>{const b=btns[+el.dataset.i];if(b.get){b.get();return}closeOv();res(b.value)})})}
+function sheet(title,items){return new Promise(res=>{const o=$('#ov');
+  o.innerHTML=`<div class="bg"></div><div class="sheet" role="dialog" aria-modal="true">${title?`<h3>${esc(title)}</h3>`:''}<div class="list">${items.map((it,i)=>`<button class="li" data-i="${i}"><span class="ico" style="background:${it.bg||'var(--pri-l)'};color:${it.fg||'var(--pri)'}">${ic(it.icon||'chev')}</span><span style="flex:1;min-width:0"><b style="font-size:15.5px;color:${it.danger?'var(--bad)':'var(--ink)'}">${esc(it.label)}</b>${it.sub?`<div class="muted small">${esc(it.sub)}</div>`:''}</span></button>`).join('')}</div><button class="btn sec" style="margin-top:12px" id="shx">닫기</button></div>`;
+  o.classList.add('on');$('.bg',o).onclick=$('#shx',o).onclick=()=>{closeOv();res(null)};
+  $$('.li',o).forEach(el=>el.onclick=()=>{closeOv();res(items[+el.dataset.i].key)})})}
+async function copyText(t){try{await navigator.clipboard.writeText(t)}catch(e){const a=document.createElement('textarea');a.value=t;document.body.appendChild(a);a.select();try{document.execCommand('copy')}catch(e2){}a.remove()}toast('복사했어요')}
+
+/* ---------- 아이콘 ---------- */
+const IC={
+ scan:'<path d="M4 8V5a1 1 0 0 1 1-1h3M16 4h3a1 1 0 0 1 1 1v3M20 16v3a1 1 0 0 1-1 1h-3M8 20H5a1 1 0 0 1-1-1v-3M4 12h16"/>',
+ plus:'<rect x="4" y="4" width="16" height="16" rx="3"/><path d="M12 8v8M8 12h8"/>',
+ hist:'<circle cx="12" cy="12" r="8"/><path d="M12 8v4l3 2"/>',
+ gear:'<circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/>',
+ back:'<path d="M15 6l-6 6 6 6"/>',chev:'<path d="M9 6l6 6-6 6"/>',x:'<path d="M6 6l12 12M18 6L6 18"/>',
+ flash:'<path d="M13 3L5 14h6l-1 7 8-11h-6z"/>',img:'<rect x="3" y="5" width="18" height="14" rx="2"/><circle cx="9" cy="10" r="1.5"/><path d="M21 16l-5-5-8 8"/>',
+ link:'<path d="M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1 1M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1-1"/>',
+ wifi:'<path d="M2 9a15 15 0 0 1 20 0M5 12.5a10 10 0 0 1 14 0M8.5 16a5 5 0 0 1 7 0M12 19.5h.01"/>',
+ card:'<rect x="4" y="5" width="16" height="14" rx="2"/><circle cx="9" cy="10" r="2"/><path d="M6 16a3 3 0 0 1 6 0M14 9h4M14 13h4"/>',
+ text:'<path d="M5 6h14M12 6v13M9 19h6"/>',mail:'<rect x="3" y="6" width="18" height="12" rx="2"/><path d="M3 7l9 6 9-6"/>',
+ sms:'<path d="M4 5h16v11H9l-5 4z"/>',tel:'<path d="M5 4h4l2 5-2.5 1.5a11 11 0 0 0 5 5L15 13l5 2v4a2 2 0 0 1-2 2A16 16 0 0 1 3 6a2 2 0 0 1 2-2"/>',
+ event:'<rect x="4" y="6" width="16" height="14" rx="2"/><path d="M4 10h16M8 3v4M16 3v4"/>',
+ map:'<path d="M12 21s-7-6.2-7-11.5a7 7 0 0 1 14 0C19 14.8 12 21 12 21z"/><circle cx="12" cy="9.5" r="2.5"/>',
+ bar:'<path d="M4 5v14M7 5v14M11 5v14M14 5v14M17 5v14M20 5v14"/>',
+ copy:'<rect x="8" y="8" width="12" height="12" rx="2"/><path d="M16 8V5a1 1 0 0 0-1-1H5a1 1 0 0 0-1 1v10a1 1 0 0 0 1 1h3"/>',
+ share:'<path d="M12 15V3M8 7l4-4 4 4"/><path d="M5 12v7a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-7"/>',
+ heart:'<path d="M12 20s-7-4.4-7-10a4 4 0 0 1 7-2.6A4 4 0 0 1 19 10c0 5.6-7 10-7 10z"/>',
+ heartf:'<path fill="currentColor" d="M12 20s-7-4.4-7-10a4 4 0 0 1 7-2.6A4 4 0 0 1 19 10c0 5.6-7 10-7 10z"/>',
+ open:'<path d="M14 4h6v6M20 4l-9 9M18 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h5"/>',
+ shield:'<path d="M12 3l7 3v5c0 4.5-3 8-7 10-4-2-7-5.5-7-10V6z"/><path d="M9 12l2 2 4-4"/>',
+ warn:'<path d="M12 3l9 16H3z"/><path d="M12 10v4M12 17h.01"/>',
+ ok:'<path d="M5 12l4 4 10-10"/>',no:'<path d="M6 6l12 12M18 6L6 18"/>',dash:'<path d="M6 12h12"/>',
+ trash:'<path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13"/>',search:'<circle cx="11" cy="11" r="6"/><path d="M20 20l-4.5-4.5"/>',
+ star:'<path d="M12 4l2.4 5 5.6.6-4.2 3.8 1.2 5.5L12 16.2 7 18.9l1.2-5.5L4 9.6l5.6-.6z"/>',
+ cart:'<path d="M4 5h2l2 10h10l2-7H7"/><circle cx="10" cy="19" r="1.4"/><circle cx="17" cy="19" r="1.4"/>',
+ edit:'<path d="M4 20h4L19 9l-4-4L4 16z"/>',list:'<path d="M5 6h14M5 12h14M5 18h9"/>',dl:'<path d="M12 4v11M8 11l4 4 4-4M5 19h14"/>',
+ lock:'<rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/>',info:'<circle cx="12" cy="12" r="9"/><path d="M12 11v6M12 7.5h.01"/>'
+};
+function ic(n,s=22,w=1.9){return`<svg width="${s}" height="${s}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="${w}" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${IC[n]||''}</svg>`}
+
+/* ---------- 설정 ---------- */
+const CONFIG={
+  adTesting:true, // 정식 출시 후 실제 광고로 바꿀 때 false
+  adBanner:'ca-app-pub-3940256099942544/2934735716',  // TODO: AdMob iOS 배너 단위로 교체
+  adInter:'ca-app-pub-3940256099942544/4411468910',   // TODO: 전면 단위
+  adReward:'ca-app-pub-3940256099942544/1712485313',  // TODO: 보상형 단위
+  interGapSec:60, interEvery:4,
+  subMonthly:'qr_pro_monthly', subYearly:'qr_pro_yearly',
+  priceMonthly:'월 1,900원', priceYearly:'연 11,900원',
+  freeBatch:10, freePx:600, proPx:1600,
+  privacyUrl:'https://sevio.co.kr/qrscanner/privacy',
+  termsUrl:'https://www.apple.com/legal/internet-services/itunes/dev/stdeula/',
+  supportEmail:'sevio2848@gmail.com', appVersion:'1.0.0', appName:'QR & Barcode Scanner'
+};
+
+/* ---------- 프로 상태 ---------- */
+function subOwned(){const s=lsGet('subOwned',null);return !!(s&&s.v&&Date.now()-s.t<4*864e5)}
+function isPro(){return subOwned()}
+
+/* ---------- 광고 ---------- */
+let adReady=false,bannerMade=false,bannerOn=false,lastInter=Date.now(),interLoaded=false,resultCount=0;
+const BANNER_VIEWS=new Set(['result','product','create','history','settings','batch','shop']);
+async function adsInit(){if(!NATIVE||isPro())return;const A=plug('AdMob');if(!A)return;
+  try{if(IOS){try{const st=await A.trackingAuthorizationStatus();if(st&&st.status==='notDetermined')await A.requestTrackingAuthorization()}catch(e){}}
+    await A.initialize({initializeForTesting:CONFIG.adTesting});adReady=true;
+    A.addListener('bannerAdSizeChanged',s=>document.documentElement.style.setProperty('--adh',(bannerOn&&s&&s.height?s.height:0)+'px'));
+    prepInter();setBanner(BANNER_VIEWS.has(cur().name))}catch(e){console.warn('admob',e)}}
+async function prepInter(){try{await plug('AdMob').prepareInterstitial({adId:CONFIG.adInter,isTesting:CONFIG.adTesting});interLoaded=true}catch(e){interLoaded=false}}
+async function maybeInter(){resultCount++;if(!adReady||isPro()||resultCount%CONFIG.interEvery)return;if(Date.now()-lastInter<CONFIG.interGapSec*1000)return;if(!interLoaded){prepInter();return}
+  interLoaded=false;lastInter=Date.now();try{await plug('AdMob').showInterstitial()}catch(e){}setTimeout(prepInter,1000)}
+async function setBanner(on){if(!adReady||isPro())on=false;if(on===bannerOn)return;bannerOn=on;const A=plug('AdMob');
+  try{if(on){if(!bannerMade){bannerMade=true;await A.showBanner({adId:CONFIG.adBanner,adSize:'ADAPTIVE_BANNER',position:'BOTTOM_CENTER',margin:0,isTesting:CONFIG.adTesting})}else await A.resumeBanner()}
+    else{document.documentElement.style.setProperty('--adh','0px');if(bannerMade)await A.hideBanner()}}catch(e){console.warn('banner',e)}}
+async function showReward(){if(!adReady){toast('광고를 준비하지 못했어요');return false}const A=plug('AdMob');try{await A.prepareRewardVideoAd({adId:CONFIG.adReward,isTesting:CONFIG.adTesting});const r=await A.showRewardVideoAd();lastInter=Date.now();return !!r}catch(e){toast('광고를 불러오지 못했어요. 잠시 후 다시 해 주세요');return false}}
+async function needPro(name){if(isPro())return true;
+  const items=[{key:'pro',label:'프로 시작하기',sub:`${CONFIG.priceMonthly} · ${CONFIG.priceYearly}`,icon:'star'}];
+  if(NATIVE)items.unshift({key:'ad',label:'광고 보고 1회 사용',sub:'짧은 광고를 끝까지 보면 바로 쓸 수 있어요',icon:'open'});
+  const k=await sheet(`'${name}'은(는) 프로 기능이에요`,items);if(k==='ad')return await showReward();if(k==='pro')go('pro');return false}
+
+/* ---------- 구독 결제 ---------- */
+let billing=null;
+async function billingInit(){if(!NATIVE)return;const t0=Date.now();while(!window.CdvPurchase&&Date.now()-t0<8000)await sleep(300);if(!window.CdvPurchase)return;
+  try{const {store,ProductType,Platform}=CdvPurchase;const PF=IOS?Platform.APPLE_APPSTORE:Platform.GOOGLE_PLAY;
+    store.register([{id:CONFIG.subMonthly,type:ProductType.PAID_SUBSCRIPTION,platform:PF},{id:CONFIG.subYearly,type:ProductType.PAID_SUBSCRIPTION,platform:PF}]);
+    store.when().approved(t=>t.verify()).verified(r=>r.finish()).receiptUpdated(refreshSub).productUpdated(refreshSub);
+    await store.initialize([PF]);billing=store;refreshSub()}catch(e){console.warn('billing',e)}}
+function refreshSub(){if(!billing)return;const own=billing.owned(CONFIG.subMonthly)||billing.owned(CONFIG.subYearly);const was=isPro();lsSet('subOwned',{v:own,t:Date.now()});
+  if(own){setBanner(false);if(!was){toast('프로가 시작됐어요! 광고가 사라져요',3000);if(['pro','settings'].includes(cur().name))render()}}}
+function storePrice(id,fb){try{const p=billing&&billing.get(id);const o=p&&p.getOffer();const ph=o&&o.pricingPhases&&o.pricingPhases[0];return ph&&ph.price?ph.price:fb}catch(e){return fb}}
+async function buy(which){if(!NATIVE)return toast('앱에서만 결제할 수 있어요');if(!billing)return toast('결제를 준비하지 못했어요. 인터넷 연결을 확인하고 다시 시도하세요',3500);
+  const p=billing.get(which==='y'?CONFIG.subYearly:CONFIG.subMonthly);const o=p&&p.getOffer();if(!o)return toast('상품 정보를 불러오지 못했어요',3000);
+  try{const err=await o.order();if(err&&err.code!==CdvPurchase.ErrorCode.PAYMENT_CANCELLED)toast('결제 실패: '+err.message,3500)}catch(e){toast('결제 실패',3000)}}
+async function restoreBuy(){if(!billing)return toast(NATIVE?'결제를 준비하지 못했어요':'앱에서만 복원할 수 있어요');await withBusy('구매 내역 확인 중…',async()=>{await billing.restorePurchases();refreshSub()});toast(isPro()?'프로가 복원됐어요':'복원할 구독이 없어요')}
+
+/* ---------- 파일 저장·공유·링크 열기 ---------- */
+function blobToB64(b){return new Promise((res,rej)=>{const r=new FileReader();r.onload=()=>res(String(r.result).split(',')[1]);r.onerror=rej;r.readAsDataURL(b)})}
+async function shareFile(name,blob,title){
+  if(NATIVE){const FS=plug('Filesystem'),S=plug('Share');const data=await blobToB64(blob);const w=await FS.writeFile({path:name,data,directory:'CACHE'});
+    try{await S.share({title:title||name,files:[w.uri]})}catch(e){try{await S.share({title:title||name,url:w.uri})}catch(e2){}}return}
+  try{const f=new File([blob],name,{type:blob.type});if(navigator.canShare&&navigator.canShare({files:[f]})){await navigator.share({files:[f],title:title||name});return}}catch(e){if(e&&e.name==='AbortError')return}
+  const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=name;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(a.href),4000)}
+async function shareText(t){if(NATIVE){try{await plug('Share').share({text:t})}catch(e){}return}try{if(navigator.share){await navigator.share({text:t});return}}catch(e){if(e&&e.name==='AbortError')return}copyText(t)}
+async function openUrl(u){const B=plug('Browser');if(NATIVE&&B&&/^https?:/i.test(u)){try{await B.open({url:u});return}catch(e){}}
+  if(/^https?:/i.test(u))window.open(u,'_blank');else location.href=u}
+
+/* ---------- 기록 ---------- */
+function hist(){return lsGet('hist',[])}
+function saveHist(h){lsSet('hist',h.slice(0,1000))}
+function addHist(it){const h=hist();it.id=it.id||uid();it.at=it.at||Date.now();h.unshift(it);saveHist(h);return it}
+function getHist(id){return hist().find(x=>x.id===id)}
+function updHist(id,patch){const h=hist();const i=h.findIndex(x=>x.id===id);if(i<0)return;Object.assign(h[i],patch);saveHist(h);return h[i]}
+function delHist(id){saveHist(hist().filter(x=>x.id!==id))}
+
+/* ---------- 내용 해석 ---------- */
+const PRODUCT_FMT=new Set(['EAN_13','EAN_8','UPC_A','UPC_E']);
+const FMT_NAME={QR_CODE:'QR 코드',EAN_13:'EAN-13',EAN_8:'EAN-8',UPC_A:'UPC-A',UPC_E:'UPC-E',CODE_128:'Code 128',CODE_39:'Code 39',CODE_93:'Code 93',ITF:'ITF',DATA_MATRIX:'Data Matrix',PDF_417:'PDF417',AZTEC:'Aztec',CODABAR:'Codabar'};
+function unesc(s){return String(s||'').replace(/\\([\\;,:"])/g,'$1')}
+function splitEsc(s,sep){const out=[];let cur='',e=false;for(const ch of s){if(e){cur+=ch;e=false}else if(ch==='\\'){e=true}else if(ch===sep){out.push(cur);cur=''}else cur+=ch}out.push(cur);return out}
+function parseContent(text,fmt){const t=String(text||'').trim();
+  if(fmt&&PRODUCT_FMT.has(fmt))return{type:'product',code:t};
+  if(/^https?:\/\//i.test(t))return{type:'url',url:t};
+  if(/^www\.[^\s]+\.[a-z]{2,}/i.test(t))return{type:'url',url:'https://'+t};
+  if(/^WIFI:/i.test(t)){const f={};for(const part of splitEsc(t.slice(5),';')){const m=part.match(/^([A-Z]+):(.*)$/s);if(m)f[m[1].toUpperCase()]=m[2]}
+    return{type:'wifi',ssid:f.S||'',pass:f.P||'',sec:(f.T||'').toUpperCase()||'nopass',hidden:/true/i.test(f.H||'')}}
+  if(/^BEGIN:VCARD/i.test(t)){const g=k=>{const m=t.match(new RegExp('^'+k+'(?:;[^:\\n]*)?:(.*)$','im'));return m?unesc(m[1].trim()):''};
+    let name=g('FN');if(!name){const n=g('N').split(';');name=[n[0],n[1]].filter(Boolean).join('')}return{type:'contact',name,org:g('ORG').replace(/;/g,' '),tel:g('TEL'),email:g('EMAIL'),url:g('URL'),title:g('TITLE'),raw:t}}
+  if(/^MECARD:/i.test(t)){const f={};for(const part of splitEsc(t.slice(7),';')){const m=part.match(/^([A-Z]+):(.*)$/s);if(m&&!f[m[1]])f[m[1]]=m[2]}
+    const name=(f.N||'').split(',').join('');return{type:'contact',name,org:f.ORG||'',tel:f.TEL||'',email:f.EMAIL||'',url:f.URL||'',title:'',raw:t,mecard:true}}
+  if(/^mailto:/i.test(t)){try{const u=new URL(t);return{type:'email',to:decodeURIComponent(u.pathname),sub:u.searchParams.get('subject')||'',body:u.searchParams.get('body')||''}}catch(e){return{type:'email',to:t.slice(7),sub:'',body:''}}}
+  if(/^MATMSG:/i.test(t)){const f={};for(const part of splitEsc(t.slice(7),';')){const m=part.match(/^([A-Z]+):(.*)$/s);if(m)f[m[1]]=m[2]}return{type:'email',to:f.TO||'',sub:f.SUB||'',body:f.BODY||''}}
+  if(/^(SMSTO|SMS):/i.test(t)){const r=t.replace(/^(SMSTO|SMS):/i,'');const i=r.indexOf(':');return{type:'sms',to:i<0?r:r.slice(0,i),body:i<0?'':r.slice(i+1)}}
+  if(/^tel:/i.test(t))return{type:'tel',to:t.slice(4)};
+  if(/^geo:/i.test(t)){const m=t.slice(4).match(/^(-?[\d.]+),(-?[\d.]+)/);const q=(t.match(/[?&]q=([^&]+)/)||[])[1];return{type:'geo',lat:m?m[1]:'',lng:m?m[2]:'',q:q?decodeURIComponent(q.replace(/\+/g,' ')):''}}
+  if(/BEGIN:VEVENT/i.test(t)){const g=k=>{const m=t.match(new RegExp('^'+k+'(?:;[^:\\n]*)?:(.*)$','im'));return m?unesc(m[1].trim()):''};return{type:'event',title:g('SUMMARY'),start:g('DTSTART'),end:g('DTEND'),loc:g('LOCATION'),raw:t}}
+  if(/^\d{8,14}$/.test(t)&&eanValid(t))return{type:'product',code:t};
+  return{type:'text',text:t}}
+const TYPE_INFO={url:['웹 링크','link','#DBEAFE','#1E40AF'],wifi:['와이파이','wifi','#E0E7FF','#3730A3'],contact:['연락처','card','#DBEAFE','#1E40AF'],email:['이메일','mail','#FCE7F3','#9D174D'],sms:['문자','sms','#DCFCE7','#166534'],tel:['전화','tel','#DCFCE7','#166534'],geo:['위치','map','#FEF3C7','#92400E'],event:['일정','event','#FEF3C7','#92400E'],product:['상품 바코드','bar','#E2E8F0','#334155'],text:['텍스트','text','#F1F5F9','#334155']};
+function fmtEvDate(s){const m=String(s||'').match(/^(\d{4})(\d{2})(\d{2})(?:T(\d{2})(\d{2}))?/);if(!m)return s||'';return`${+m[1]}년 ${+m[2]}월 ${+m[3]}일`+(m[4]?` ${m[4]}:${m[5]}`:'')}
+function itemTitle(it){const p=parseContent(it.text,it.fmt);switch(p.type){case'url':return p.url.replace(/^https?:\/\//i,'');case'wifi':return p.ssid||'와이파이';case'contact':return p.name||p.tel||'연락처';case'email':return p.to||'이메일';case'sms':return p.to||'문자';case'tel':return p.to;case'geo':return p.q||`${p.lat}, ${p.lng}`;case'event':return p.title||'일정';case'product':return p.code;default:return p.text.split('\n')[0]}}
+
+/* ---------- 바코드 ---------- */
+function eanValid(c){if(!/^\d+$/.test(c)||![8,12,13,14].includes(c.length))return false;const d=c.split('').map(Number);const chk=d.pop();let s=0;d.reverse().forEach((x,i)=>{s+=x*(i%2===0?3:1)});return(10-s%10)%10===chk}
+const GS1=[[0,19,'미국·캐나다'],[30,39,'미국'],[60,139,'미국·캐나다'],[300,379,'프랑스'],[380,380,'불가리아'],[383,383,'슬로베니아'],[385,385,'크로아티아'],[400,440,'독일'],[450,459,'일본'],[460,469,'러시아'],[471,471,'대만'],[474,474,'에스토니아'],[475,475,'라트비아'],[477,477,'리투아니아'],[480,480,'필리핀'],[489,489,'홍콩'],[490,499,'일본'],[500,509,'영국'],[520,521,'그리스'],[528,528,'레바논'],[529,529,'키프로스'],[535,535,'몰타'],[539,539,'아일랜드'],[540,549,'벨기에·룩셈부르크'],[560,560,'포르투갈'],[569,569,'아이슬란드'],[570,579,'덴마크'],[590,590,'폴란드'],[594,594,'루마니아'],[599,599,'헝가리'],[600,601,'남아프리카공화국'],[611,611,'모로코'],[613,613,'알제리'],[616,616,'케냐'],[622,622,'이집트'],[628,628,'사우디아라비아'],[629,629,'아랍에미리트'],[640,649,'핀란드'],[690,699,'중국'],[700,709,'노르웨이'],[729,729,'이스라엘'],[730,739,'스웨덴'],[750,750,'멕시코'],[754,755,'캐나다'],[760,769,'스위스'],[770,771,'콜롬비아'],[773,773,'우루과이'],[775,775,'페루'],[778,779,'아르헨티나'],[780,780,'칠레'],[789,790,'브라질'],[800,839,'이탈리아'],[840,849,'스페인'],[850,850,'쿠바'],[858,858,'슬로바키아'],[859,859,'체코'],[860,860,'세르비아'],[867,867,'북한'],[868,869,'튀르키예'],[870,879,'네덜란드'],[880,880,'대한민국'],[884,884,'캄보디아'],[885,885,'태국'],[888,888,'싱가포르'],[890,890,'인도'],[893,893,'베트남'],[896,896,'파키스탄'],[899,899,'인도네시아'],[900,919,'오스트리아'],[930,939,'호주'],[940,949,'뉴질랜드'],[955,955,'말레이시아'],[958,958,'마카오'],[977,977,'잡지(ISSN)'],[978,979,'도서(ISBN)']];
+function gs1Country(code){let c=code;if(c.length===12)c='0'+c;if(c.length===8||c.length<12)return'';const p=+c.slice(0,3);const r=GS1.find(g=>p>=g[0]&&p<=g[1]);return r?r[2]:''}
+function eanBars(code){/* EAN-13 막대 패턴(표시용) */
+  const L=['0001101','0011001','0010011','0111101','0100011','0110001','0101111','0111011','0110111','0001011'];
+  const G=['0100111','0110011','0011011','0100001','0011101','0111001','0000101','0010001','0001001','0010111'];
+  const R=['1110010','1100110','1101100','1000010','1011100','1001110','1010000','1000100','1001000','1110100'];
+  const PAR=['LLLLLL','LLGLGG','LLGGLG','LLGGGL','LGLLGG','LGGLLG','LGGGLL','LGLGLG','LGLGGL','LGGLGL'];
+  let c=code;if(c.length===12)c='0'+c;if(c.length!==13||!/^\d+$/.test(c))return'';
+  const d=c.split('').map(Number),par=PAR[d[0]];let s='101';for(let i=1;i<7;i++)s+=(par[i-1]==='L'?L:G)[d[i]];s+='01010';for(let i=7;i<13;i++)s+=R[d[i]];s+='101';return s}
+const SHOPS=[{name:'네이버 쇼핑',ini:'N',bg:'#15803D',u:q=>'https://search.shopping.naver.com/search/all?query='+q},{name:'쿠팡',ini:'C',bg:'#B91C1C',u:q=>'https://www.coupang.com/np/search?q='+q},{name:'다나와',ini:'D',bg:'#1D4ED8',u:q=>'https://search.danawa.com/dsearch.php?query='+q},{name:'구글 검색',ini:'G',bg:'#475569',u:q=>'https://www.google.com/search?q='+q}];
+
+/* ---------- 큐싱(QR 피싱) 안전 검사 ---------- */
+const SLD2=new Set(['co.kr','go.kr','or.kr','ac.kr','ne.kr','re.kr','pe.kr','mil.kr','hs.kr','ms.kr','es.kr','sc.kr','kg.kr','seoul.kr','busan.kr','co.uk','org.uk','ac.uk','gov.uk','com.au','net.au','org.au','co.jp','ne.jp','or.jp','go.jp','com.cn','net.cn','com.tw','com.hk','co.nz','com.br','com.sg','co.in','co.id','com.vn','co.th']);
+function regDomain(host){const p=host.split('.').filter(Boolean);if(p.length<=2)return p.join('.');const l2=p.slice(-2).join('.');return SLD2.has(l2)?p.slice(-3).join('.'):l2}
+const SHORTENERS=new Set(['bit.ly','me2.kr','han.gl','url.kr','vo.la','tinyurl.com','t.co','goo.gl','is.gd','buly.kr','c11.kr','abit.ly','zrr.kr','shorturl.at','rb.gy','cutt.ly','ow.ly','t.ly','s.id','lrl.kr','na.to','asq.kr','v.gd','buff.ly','tiny.cc','short.io','qrco.de','qr.net','u.to','link24.kr','muz.so','naver.me']);
+const RISKY_TLD=new Set(['xyz','top','click','icu','cyou','sbs','buzz','rest','monster','cfd','lol','quest','bar','zip','mov','work','gq','tk','ml','cf','ga','win','loan','vip','bond']);
+const OFFICIAL=[
+ {k:['naver'],n:'네이버',d:['naver.com','naver.me','navercorp.com','naver.net']},
+ {k:['kakao','daum'],n:'카카오',d:['kakao.com','kakaocorp.com','kakaobank.com','kakaopay.com','daum.net','kakaocdn.net']},
+ {k:['coupang'],n:'쿠팡',d:['coupang.com','coupangpay.com']},
+ {k:['toss'],n:'토스',d:['toss.im','tossbank.com','tosspayments.com']},
+ {k:['kbstar','kbcard','kb'],n:'KB국민은행',d:['kbstar.com','kbcard.com','kbfg.com','kbinsure.co.kr']},
+ {k:['shinhan'],n:'신한',d:['shinhan.com','shinhancard.com','shinhanlife.co.kr']},
+ {k:['woori'],n:'우리은행',d:['wooribank.com','wooricard.com','woorifg.com']},
+ {k:['hana','kebhana'],n:'하나은행',d:['hanabank.com','hanacard.co.kr','hanafn.com']},
+ {k:['nonghyup','nh'],n:'농협',d:['nonghyup.com','nhbank.com','nhcard.com','nhqv.com']},
+ {k:['ibk'],n:'IBK기업은행',d:['ibk.co.kr']},
+ {k:['epost'],n:'우체국',d:['epost.go.kr','epost.kr','koreapost.go.kr']},
+ {k:['cjlogistics','cj'],n:'CJ대한통운',d:['cjlogistics.com','cj.net']},
+ {k:['hanjin'],n:'한진택배',d:['hanjin.com','hanjin.co.kr']},
+ {k:['lotte'],n:'롯데',d:['lotte.co.kr','lotteglogis.com','lotteon.com','lottecard.co.kr']},
+ {k:['hometax','nts'],n:'국세청 홈택스',d:['hometax.go.kr','nts.go.kr']},
+ {k:['police'],n:'경찰청',d:['police.go.kr','ecrm.police.go.kr']},
+ {k:['nhis'],n:'국민건강보험',d:['nhis.or.kr']},
+ {k:['seoul'],n:'서울시',d:['seoul.go.kr']},
+ {k:['gov'],n:'정부24',d:['gov.kr','go.kr']},
+ {k:['apple','icloud'],n:'Apple',d:['apple.com','icloud.com']},
+ {k:['google','gmail'],n:'Google',d:['google.com','google.co.kr','gmail.com','goo.gl']},
+ {k:['paypal'],n:'PayPal',d:['paypal.com']},{k:['amazon'],n:'Amazon',d:['amazon.com','amazon.co.jp']},
+ {k:['samsung'],n:'삼성',d:['samsung.com','samsungcard.com','samsungfire.com']},
+ {k:['hyundai'],n:'현대',d:['hyundai.com','hyundaicard.com']},
+ {k:['instagram'],n:'인스타그램',d:['instagram.com']},{k:['facebook'],n:'페이스북',d:['facebook.com','fb.com']},{k:['youtube'],n:'유튜브',d:['youtube.com','youtu.be']}
+];
+function lev(a,b){if(a===b)return 0;const m=a.length,n=b.length;if(!m||!n)return m+n;let pr=Array.from({length:n+1},(_,i)=>i);for(let i=1;i<=m;i++){const c=[i];for(let j=1;j<=n;j++)c[j]=Math.min(pr[j]+1,c[j-1]+1,pr[j-1]+(a[i-1]===b[j-1]?0:1));pr=c}return pr[n]}
+function isOfficialHost(host,doms){return doms.some(d=>host===d||host.endsWith('.'+d)||(d==='go.kr'&&host.endsWith('.go.kr')))}
+function lookalike(host){const reg=regDomain(host);const tokens=host.split(/[.\-_]/).filter(Boolean);const label=reg.split('.')[0];
+  for(const o of OFFICIAL){if(isOfficialHost(host,o.d))return null}
+  const COMMON=new Set(['seoul','lotte','samsung','hyundai','apple','amazon','police','google','hana','toss','gov']);
+  for(const o of OFFICIAL){for(const k of o.k){const hit=(k.length<5||COMMON.has(k))?tokens.includes(k):host.includes(k);if(hit)return Object.assign({w:2},o)}}
+  if(label.length>=5)for(const o of OFFICIAL)for(const d of o.d){const ol=d.split('.')[0];if(ol.length>=5&&lev(label,ol)<=(ol.length>=8?2:1))return Object.assign({w:3,typo:1},o)}
+  return null}
+async function nativeGet(url,headers){const H=plug('CapacitorHttp');if(!NATIVE||!H)throw new Error('no-native');return await Promise.race([H.request({url,method:'GET',headers:headers||{},connectTimeout:6000,readTimeout:6000}),sleep(7000).then(()=>{throw new Error('timeout')})])}
+async function expandShort(url){try{const r=await nativeGet(url);return r&&r.url&&r.url!==url?r.url:null}catch(e){return null}}
+async function domainAgeDays(reg){const cache=lsGet('rdap',{});const c=cache[reg];if(c&&Date.now()-c.t<7*864e5)return c.v;
+  try{const r=await nativeGet('https://rdap.org/domain/'+encodeURIComponent(reg),{Accept:'application/rdap+json'});let d=r&&r.data;if(typeof d==='string')d=JSON.parse(d);
+    const ev=(d&&d.events||[]).find(e=>/registration/i.test(e.eventAction));if(!ev)return null;const days=Math.floor((Date.now()-Date.parse(ev.eventDate))/864e5);
+    if(!isFinite(days))return null;cache[reg]={v:days,t:Date.now()};lsSet('rdap',cache);return days}catch(e){return null}}
+function ageText(d){if(d<1)return'오늘';if(d<60)return d+'일 전';if(d<730)return Math.floor(d/30)+'개월 전';return Math.floor(d/365)+'년 전'}
+async function analyzeUrl(raw){const checks=[];let score=0;let url=raw;let finalNote='';
+  let u;try{u=new URL(url)}catch(e){return{level:'caution',checks:[{s:'bad',t:'주소 형식이 이상해요',d:'정상적인 웹 주소가 아니에요'}],url}}
+  let host=u.hostname.toLowerCase();
+  if(SHORTENERS.has(host)||SHORTENERS.has(regDomain(host))){const fin=await expandShort(url);
+    if(fin){finalNote=fin;try{u=new URL(fin);host=u.hostname.toLowerCase();url=fin}catch(e){}checks.push({s:'ok',t:'단축 URL 실제 주소 확인',d:fin.length>60?fin.slice(0,60)+'…':fin})}
+    else{score+=1;checks.push({s:'bad',t:'단축 URL',d:'실제 주소가 가려져 있어요. 열기 전에 조심하세요'})}}
+  else checks.push({s:'ok',t:'단축 URL 아님',d:'실제 주소가 그대로 보여요'});
+  if(u.protocol==='https:')checks.push({s:'ok',t:'보안 연결(HTTPS)',d:'암호화된 연결을 사용해요'});else{score+=1;checks.push({s:'bad',t:'보안 연결 아님(HTTP)',d:'입력한 정보가 암호화되지 않아요'})}
+  if(/^\d{1,3}(\.\d{1,3}){3}$/.test(host)||host.includes(':')){score+=3;checks.push({s:'bad',t:'숫자로 된 주소(IP)',d:'정상 기업·기관은 거의 쓰지 않는 형태예요'})}
+  if(/(^|\.)xn--/.test(host)){score+=2;checks.push({s:'bad',t:'특수문자 도메인(퓨니코드)',d:'비슷해 보이는 다른 글자로 속일 수 있어요'})}
+  if(u.username||/@/.test(u.href.split('?')[0].replace(/^https?:\/\//,'').split('/')[0])){score+=2;checks.push({s:'bad',t:'주소 안의 @ 기호',d:'앞부분은 가짜이고 @ 뒤가 실제 주소예요'})}
+  const tld=host.split('.').pop();if(RISKY_TLD.has(tld)){score+=1;checks.push({s:'bad',t:`피싱에 자주 쓰이는 .${tld} 주소`,d:'저렴해서 사기 사이트가 많이 쓰는 도메인이에요'})}
+  if(host.split('.').length>=5){score+=1;checks.push({s:'bad',t:'하위 주소가 너무 많아요',d:'진짜 사이트 이름을 앞에 붙여 속이는 경우가 있어요'})}
+  const lk=lookalike(host);if(lk){score+=lk.w;checks.push({s:'bad',t:lk.typo?'공식 사이트와 철자가 비슷해요':'공식 사이트 이름이 들어 있어요',d:`${lk.n} 공식 주소(${lk.d[0]})가 아니에요`})}
+  else checks.push({s:'ok',t:'유명 사이트 사칭 없음',d:'알려진 기관·기업 이름을 흉내 내지 않아요'});
+  const reg=regDomain(host);
+  if(!/^\d/.test(host)){const days=await domainAgeDays(reg);
+    if(days==null)checks.push({s:'na',t:'도메인 등록일',d:NATIVE?'확인할 수 없는 주소예요':'앱에서 확인할 수 있어요'});
+    else if(days<30){score+=3;checks.push({s:'bad',t:'새로 만든 주소',d:`${ageText(days)}에 등록된 도메인이에요`})}
+    else checks.push({s:'ok',t:'오래 쓰인 주소',d:`${ageText(days)}에 등록된 도메인이에요`})}
+  if(score>0&&/(login|signin|verify|account|secure|update|pay|bank|wallet|auth|parking|refund|tax|delivery|결제|인증|환급|배송)/i.test(decodeURIComponent(u.href))){score+=1;checks.push({s:'bad',t:'개인정보·결제를 요구하는 주소',d:'로그인·결제·환급 같은 단어가 들어 있어요'})}
+  const level=score>=3?'danger':score>=1?'caution':'safe';
+  checks.sort((a,b)=>({bad:0,na:1,ok:2}[a.s]-{bad:0,na:1,ok:2}[b.s]));return{level,checks,url,finalNote,host}}
+const LEVEL={safe:{t:'알려진 위험 신호가 없어요',d:'그래도 결제·로그인 전에는 주소를 한 번 더 확인하세요',ic:'shield',bg:'#DCFCE7',fg:'#15803D',tc:'#166534'},
+ caution:{t:'주의가 필요한 링크예요',d:'개인정보나 결제 정보를 입력하기 전에 확인하세요',ic:'warn',bg:'#FFEDD5',fg:'#C2410C',tc:'#9A3412'},
+ danger:{t:'위험할 수 있는 링크예요',d:'큐싱(QR 피싱) 신호가 여러 개 보여요. 열지 않는 걸 권해요',ic:'warn',bg:'#FEE2E2',fg:'#B91C1C',tc:'#991B1B'}};
+
+/* ---------- 라우터 ---------- */
+const TABS=[['scan','스캔','scan'],['create','만들기','plus'],['history','기록','hist'],['settings','설정','gear']];
+let stack=[{name:'scan',p:{}}];const VIEWS={};let leaveFn=null;
+function cur(){return stack[stack.length-1]}
+function go(name,p={}){stack.push({name,p});render()}
+function replaceTop(name,p={}){stack[stack.length-1]={name,p};render()}
+function back(){if(stack.length>1){stack.pop();render()}}
+function tab(name){stack=[{name,p:{}}];render()}
+function drawTabs(){const root=stack[0].name;$('#tabs').innerHTML=TABS.map(([k,l,i])=>`<button class="${k===root?'on':''}" data-t="${k}" aria-label="${l}">${ic(i,24,k===root?2.1:1.8)}${l}</button>`).join('');$$('#tabs button').forEach(b=>b.onclick=()=>tab(b.dataset.t))}
+async function render(){if(leaveFn){try{leaveFn()}catch(e){}leaveFn=null}closeOv();const c=cur();const v=$('#view');
+  document.body.classList.toggle('notab',['pro','design'].includes(c.name));drawTabs();v.scrollTop=0;
+  setBanner(BANNER_VIEWS.has(c.name));await VIEWS[c.name](v,c.p||{})}
+function hdr(title,right=''){return`<div class="hdr"><button class="ibtn" id="bk" aria-label="뒤로">${ic('back',24,2)}</button><h1>${esc(title)}</h1>${right}</div>`}
+function bindBack(){const b=$('#bk');if(b)b.onclick=back}
+
+/* ---------- 스캔 ---------- */
+let zx=null,zxHints=null;
+function zxInit(){if(zx||!window.ZXing)return;try{zx=new ZXing.MultiFormatReader();zxHints=new Map();const F=ZXing.BarcodeFormat;
+  zxHints.set(ZXing.DecodeHintType.POSSIBLE_FORMATS,[F.EAN_13,F.EAN_8,F.UPC_A,F.UPC_E,F.CODE_128,F.CODE_39,F.CODE_93,F.ITF,F.CODABAR,F.DATA_MATRIX,F.PDF_417,F.AZTEC,F.QR_CODE]);
+  zxHints.set(ZXing.DecodeHintType.TRY_HARDER,true);zx.setHints(zxHints)}catch(e){zx=null}}
+function zxDecode(img){zxInit();if(!zx)return null;const{data,width:w,height:h}=img;const lum=new Uint8ClampedArray(w*h);
+  for(let i=0,j=0;i<lum.length;i++,j+=4)lum[i]=(data[j]*306+data[j+1]*601+data[j+2]*117)>>10;
+  try{const src=new ZXing.RGBLuminanceSource(lum,w,h);const r=zx.decodeWithState(new ZXing.BinaryBitmap(new ZXing.HybridBinarizer(src)));
+    return{text:r.getText(),fmt:ZXing.BarcodeFormat[r.getBarcodeFormat()]}}catch(e){return null}finally{try{zx.reset()}catch(e){}}}
+function jsqrDecode(img,inv){if(!window.jsQR)return null;const r=jsQR(img.data,img.width,img.height,{inversionAttempts:inv||'dontInvert'});return r&&r.data?{text:r.data,fmt:'QR_CODE'}:null}
+function mkCanvas(w,h){const c=document.createElement('canvas');c.width=Math.max(1,Math.round(w));c.height=Math.max(1,Math.round(h));return c}
+async function decodeImageFile(file){const url=URL.createObjectURL(file);try{const im=await new Promise((res,rej)=>{const i=new Image();i.onload=()=>res(i);i.onerror=rej;i.src=url});
+  for(const mx of [1400,900,2000,600]){const k=Math.min(1,mx/Math.max(im.naturalWidth,im.naturalHeight));const c=mkCanvas(im.naturalWidth*k,im.naturalHeight*k);const x=c.getContext('2d',{willReadFrequently:true});
+    x.fillStyle='#fff';x.fillRect(0,0,c.width,c.height);x.drawImage(im,0,0,c.width,c.height);const d=x.getImageData(0,0,c.width,c.height);const r=jsqrDecode(d,'attemptBoth')||zxDecode(d);if(r)return r}return null}
+  catch(e){return null}finally{URL.revokeObjectURL(url)}}
+function pickImage(){return new Promise(res=>{const i=document.createElement('input');i.type='file';i.accept='image/*';i.onchange=()=>res(i.files&&i.files[0]||null);i.click()})}
+let batch=[];
+function onScanned(r,src){const p=parseContent(r.text,r.fmt);const it=addHist({kind:'scan',text:r.text,fmt:r.fmt,src:src||'camera',type:p.type});return it}
+VIEWS.scan=async(v)=>{const mode=lsGet('scanMode','one');
+  v.innerHTML=`<div class="cam"><video playsinline muted autoplay></video><div class="shade"></div>
+   <div class="top"><button class="cbtn" id="tor" aria-label="손전등" style="visibility:hidden">${ic('flash')}</button>
+    <div class="seg" role="group" aria-label="스캔 방식"><button data-m="one" class="${mode==='one'?'on':''}">한 번</button><button data-m="multi" class="${mode==='multi'?'on':''}">연속 스캔</button></div>
+    <button class="cbtn" id="gal" aria-label="사진에서 스캔">${ic('img')}</button></div>
+   <div class="vf" aria-hidden="true"><i></i><i></i><i></i><i></i><b></b></div>
+   <div class="hint"><b>QR 코드나 바코드를 사각형 안에 맞춰 주세요</b><span>${mode==='multi'?'여러 개를 차례로 비추면 모두 모아 둬요':'링크는 열기 전에 안전한지 먼저 검사해요'}</span></div>
+   <div class="batchbar" id="bb"></div></div>`;
+  const vid=$('video',v);let stream=null,timer=0,busy=false,stopped=false,last={t:'',at:0},frame=0;
+  const drawBatch=()=>{const bb=$('#bb');if(!bb)return;if(mode!=='multi'||!batch.length){bb.innerHTML='';return}
+    bb.innerHTML=`<button class="btn pri" id="bbo" style="box-shadow:0 6px 20px rgba(0,0,0,.3)">${ic('list')} ${batch.length}개 스캔됨 · 모아 보기</button>`;$('#bbo').onclick=()=>go('batch')};
+  drawBatch();
+  $$('.seg button',v).forEach(b=>b.onclick=()=>{lsSet('scanMode',b.dataset.m);if(b.dataset.m==='one')batch=[];render()});
+  $('#gal').onclick=async()=>{const f=await pickImage();if(!f)return;const r=await withBusy('사진에서 찾는 중…',()=>decodeImageFile(f));
+    if(!r)return dialog('코드를 찾지 못했어요','<div class="muted">QR 코드나 바코드가 선명하게 보이는 사진을 골라 주세요.</div>',[{label:'확인',cls:'pri',value:1}]);
+    const it=onScanned(r,'photo');go(it.type==='product'?'product':'result',{id:it.id})};
+  const stop=()=>{stopped=true;clearInterval(timer);if(stream)stream.getTracks().forEach(t=>t.stop());stream=null};leaveFn=stop;
+  try{if(!navigator.mediaDevices||!navigator.mediaDevices.getUserMedia)throw new Error('nocam');
+    stream=await navigator.mediaDevices.getUserMedia({video:{facingMode:{ideal:'environment'},width:{ideal:1920},height:{ideal:1080}},audio:false});
+    if(stopped){stream.getTracks().forEach(t=>t.stop());return}vid.srcObject=stream;try{await vid.play()}catch(e){}
+    const track=stream.getVideoTracks()[0];const caps=track.getCapabilities?track.getCapabilities():{};
+    if(caps&&caps.torch){const tb=$('#tor');tb.style.visibility='visible';let on=false;tb.onclick=async()=>{on=!on;try{await track.applyConstraints({advanced:[{torch:on}]});tb.classList.toggle('on',on)}catch(e){toast('손전등을 켤 수 없어요')}}}
+  }catch(e){const box=document.createElement('div');box.className='camerr';box.style.zIndex='4';
+    box.innerHTML=`${ic('scan',44,1.6)}<b style="font-size:17px">카메라를 쓸 수 없어요</b><div style="color:#CBD5E1;font-size:14px;line-height:1.5">설정 앱 › ${esc(CONFIG.appName)} › 카메라를 켜 주세요.<br>사진 속 코드는 바로 스캔할 수 있어요.</div><button class="btn sec" id="gal2" style="width:auto;padding:0 22px;margin-top:6px">${ic('img')} 사진에서 스캔</button>`;
+    $('.cam',v).appendChild(box);$('#gal2').onclick=()=>$('#gal').click();return}
+  const tick=()=>{if(busy||stopped||!vid.videoWidth)return;busy=true;try{frame++;
+    const vw=vid.videoWidth,vh=vid.videoHeight;const side=Math.min(vw,vh)*0.8;const sx=(vw-side)/2,sy=(vh-side)/2;const k=Math.min(1,720/side);
+    const c=mkCanvas(side*k,side*k);const x=c.getContext('2d',{willReadFrequently:true});x.drawImage(vid,sx,sy,side,side,0,0,c.width,c.height);const d=x.getImageData(0,0,c.width,c.height);
+    let r=jsqrDecode(d);if(!r&&frame%2===0)r=zxDecode(d);
+    if(r){if(mode==='multi'){if(r.text===last.t&&Date.now()-last.at<3000)return;if(batch.some(b=>b.text===r.text)){last={t:r.text,at:Date.now()};return}
+        if(!isPro()&&batch.length>=CONFIG.freeBatch){last={t:r.text,at:Date.now()};toast(`무료는 한 번에 ${CONFIG.freeBatch}개까지 모을 수 있어요`);return}
+        last={t:r.text,at:Date.now()};const it=onScanned(r,'camera');batch.push(it);toast(`${batch.length}번째: ${itemTitle(it).slice(0,30)}`,1300);drawBatch()}
+      else{stop();const it=onScanned(r,'camera');go(it.type==='product'?'product':'result',{id:it.id})}}}finally{busy=false}};
+  timer=setInterval(tick,140)};
+
+VIEWS.batch=async(v)=>{v.innerHTML=hdr(`연속 스캔 ${batch.length}개`,`<button class="ibtn" id="bsh" aria-label="모두 공유">${ic('share')}</button>`)+`<div style="padding:4px 18px 24px">
+  ${batch.length?`<div class="list">${batch.map(it=>rowHtml(it)).join('')}</div><button class="btn sec" id="bclr" style="margin-top:14px">목록 비우고 새로 스캔</button>`:'<div class="empty">아직 스캔한 코드가 없어요</div>'}</div>`;
+  bindBack();bindRows(v);const sh=$('#bsh');if(sh)sh.onclick=()=>batch.length&&shareText(batch.map(b=>b.text).join('\n'));const cl=$('#bclr');if(cl)cl.onclick=()=>{batch=[];back()}};
+
+/* ---------- 결과 ---------- */
+function verdictHtml(a){if(!a)return`<div class="vd wait"><div class="row"><span class="spin"></span><b>링크 안전 검사 중…</b></div><div class="muted small" style="margin-top:6px">주소 모양, 사칭 여부, 등록일을 확인하고 있어요</div></div>`;
+  const L=LEVEL[a.level];return`<div class="vd ${a.level}"><div class="row"><span class="ico" style="width:44px;height:44px;border-radius:14px;background:${L.bg};color:${L.fg}">${ic(L.ic,24,2)}</span><div><b style="font-size:17px;color:${L.tc}">${L.t}</b><div class="small" style="color:${L.tc}">${L.d}</div></div></div>
+   ${a.checks.map(k=>`<div class="ck">${k.s==='ok'?`<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#15803D" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" role="img" aria-label="통과">${IC.ok}</svg>`:k.s==='bad'?`<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="${L.fg}" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" role="img" aria-label="주의">${IC.no}</svg>`:`<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#94A3B8" stroke-width="2.4" stroke-linecap="round" role="img" aria-label="확인 불가">${IC.dash}</svg>`}<div><b style="font-size:14px;color:#1E293B">${esc(k.t)}</b><div class="small muted brk">${esc(k.d)}</div></div></div>`).join('')}
+   <div class="small" style="color:#64748B;margin-top:12px">검사 결과는 참고용이에요. 의심되면 공식 앱이나 직접 입력한 주소로 접속하세요.</div></div>`}
+function fieldRow(label,val,copy){return val?`<div style="padding:10px 0;border-top:1px solid #F1F5F9;display:flex;align-items:center;gap:8px"><div style="flex:1;min-width:0"><div class="small muted">${esc(label)}</div><div class="brk" style="font-size:15.5px;font-weight:600">${esc(val)}</div></div>${copy?`<button class="ibtn" data-cp="${esc(val)}" aria-label="${esc(label)} 복사" style="color:var(--pri)">${ic('copy',20)}</button>`:''}</div>`:''}
+function vcardFrom(p){return p.raw&&!p.mecard?p.raw:`BEGIN:VCARD\nVERSION:3.0\nFN:${p.name}\nN:${p.name};;;;\n${p.org?'ORG:'+p.org+'\n':''}${p.tel?'TEL:'+p.tel+'\n':''}${p.email?'EMAIL:'+p.email+'\n':''}${p.url?'URL:'+p.url+'\n':''}END:VCARD`}
+VIEWS.result=async(v,{id})=>{const it=getHist(id);if(!it){v.innerHTML=hdr('스캔 결과')+'<div class="empty">기록이 지워졌어요</div>';bindBack();return}
+  const p=parseContent(it.text,it.fmt);const [tn,ti,tb,tf]=TYPE_INFO[p.type]||TYPE_INFO.text;
+  let body='',acts=[];
+  if(p.type==='url'){body=`<div class="brk" style="font-size:16px;font-weight:700">${esc(p.url)}</div>`;acts=[['open','열기'],['copy','복사'],['share','공유']]}
+  else if(p.type==='wifi'){body=fieldRow('네트워크 이름',p.ssid,1)+fieldRow('비밀번호',p.pass,1)+fieldRow('보안 방식',p.sec==='NOPASS'?'없음':p.sec,0)+`<div class="small muted" style="margin-top:8px">비밀번호를 복사한 뒤 설정 › Wi-Fi에서 이 네트워크를 고르고 붙여넣으세요.</div>`;acts=[['wcopy','비밀번호 복사'],['copy','전체 복사'],['share','공유']]}
+  else if(p.type==='contact'){body=`<div style="font-size:18px;font-weight:800">${esc(p.name||'이름 없음')}</div>`+fieldRow('회사',p.org,0)+fieldRow('전화',p.tel,1)+fieldRow('이메일',p.email,1)+fieldRow('웹사이트',p.url,1);acts=[['vcf','연락처 저장'],p.tel?['call','전화']:['copy','복사'],['share','공유']]}
+  else if(p.type==='email'){body=fieldRow('받는 사람',p.to,1)+fieldRow('제목',p.sub,0)+fieldRow('내용',p.body,0);acts=[['mail','메일 쓰기'],['copy','복사'],['share','공유']]}
+  else if(p.type==='sms'){body=fieldRow('받는 번호',p.to,1)+fieldRow('내용',p.body,0);acts=[['sms','문자 보내기'],['copy','복사'],['share','공유']]}
+  else if(p.type==='tel'){body=fieldRow('전화번호',p.to,1);acts=[['call','전화 걸기'],['copy','복사'],['share','공유']]}
+  else if(p.type==='geo'){body=fieldRow('장소',p.q,0)+fieldRow('좌표',p.lat?`${p.lat}, ${p.lng}`:'',1);acts=[['maps','지도에서 보기'],['copy','복사'],['share','공유']]}
+  else if(p.type==='event'){body=`<div style="font-size:18px;font-weight:800">${esc(p.title||'일정')}</div>`+fieldRow('시작',fmtEvDate(p.start),0)+fieldRow('끝',fmtEvDate(p.end),0)+fieldRow('장소',p.loc,0);acts=[['ics','캘린더에 추가'],['copy','복사'],['share','공유']]}
+  else{body=`<div class="brk" style="font-size:16px;line-height:1.5;white-space:pre-wrap">${esc(p.text)}</div>`;acts=[['copy','복사'],['search','웹 검색'],['share','공유']]}
+  const AIC={open:'open',copy:'copy',share:'share',wcopy:'copy',vcf:'card',call:'tel',mail:'mail',sms:'sms',maps:'map',ics:'event',search:'search'};
+  v.innerHTML=hdr('스캔 결과',`<button class="ibtn" id="fav" aria-label="즐겨찾기" style="color:${it.fav?'#E11D48':'var(--ink)'}">${ic(it.fav?'heartf':'heart')}</button><button class="ibtn" id="del" aria-label="삭제">${ic('trash')}</button>`)+`<div style="padding:4px 18px 28px">
+   <div class="card"><div class="row" style="margin-bottom:10px"><span class="ico" style="width:32px;height:32px;border-radius:10px;background:${tb};color:${tf}">${ic(ti,18)}</span><span class="small muted" style="font-weight:700">${tn} · ${esc(FMT_NAME[it.fmt]||it.fmt||'')}</span><span class="small muted" style="margin-left:auto">${fmtTime(it.at)}</span></div>${body}</div>
+   ${p.type==='url'?`<div id="vd">${verdictHtml(it.safety||null)}</div>`:''}
+   <div class="grid3">${acts.map(([k,l])=>`<button class="act" data-a="${k}">${ic(AIC[k],22,1.8)}${l}</button>`).join('')}</div>
+   ${p.type!=='url'&&p.type!=='text'?`<button class="btn ghost" id="raw" style="margin-top:10px">원본 내용 보기</button>`:''}
+   <button class="btn sec" id="again" style="margin-top:10px">${ic('scan')} 다시 스캔</button></div>`;
+  bindBack();$$('[data-cp]',v).forEach(b=>b.onclick=()=>copyText(b.dataset.cp));
+  $('#fav').onclick=()=>{updHist(id,{fav:!it.fav});render()};
+  $('#del').onclick=async()=>{const ok=await dialog('기록 삭제','<div class="muted">이 기록을 지울까요?</div>',[{label:'취소',value:0},{label:'삭제',cls:'pri',value:1}]);if(ok){delHist(id);back()}};
+  $('#again').onclick=()=>tab('scan');const rb=$('#raw');if(rb)rb.onclick=()=>dialog('원본 내용',`<div class="mono small" style="max-height:50vh;overflow:auto;white-space:pre-wrap">${esc(it.text)}</div>`,[{label:'복사',get:()=>copyText(it.text)},{label:'닫기',cls:'pri',value:1}]);
+  let safety=it.safety||null;
+  $$('[data-a]',v).forEach(b=>b.onclick=async()=>{const a=b.dataset.a;
+    if(a==='copy')copyText(p.type==='url'?p.url:it.text);else if(a==='share')shareText(p.type==='url'?p.url:it.text);
+    else if(a==='open'){const lv=safety?safety.level:'wait';const target=safety&&safety.url||p.url;
+      if(lv!=='safe'){const L=LEVEL[lv];const ok=await dialog(lv==='wait'?'아직 검사 중이에요':L.t,`<div class="muted">${lv==='wait'?'검사가 끝나기 전에 열까요?':'이 링크를 정말 열까요? 비밀번호나 카드 번호는 입력하지 마세요.'}</div>`,[{label:'취소',cls:'pri',value:0},{label:'그래도 열기',value:1}]);if(!ok)return}
+      openUrl(target)}
+    else if(a==='wcopy')copyText(p.pass||'');else if(a==='call')location.href='tel:'+(p.tel||p.to).replace(/[^\d+]/g,'');
+    else if(a==='mail')location.href=`mailto:${p.to}?subject=${encodeURIComponent(p.sub)}&body=${encodeURIComponent(p.body)}`;
+    else if(a==='sms')location.href=`sms:${p.to}${IOS?'&':'?'}body=${encodeURIComponent(p.body)}`;
+    else if(a==='maps')openUrl(p.lat?`https://maps.apple.com/?ll=${p.lat},${p.lng}&q=${encodeURIComponent(p.q||'위치')}`:`https://maps.apple.com/?q=${encodeURIComponent(p.q)}`);
+    else if(a==='vcf')shareFile((p.name||'contact').replace(/[\\/:*?"<>|]/g,'_')+'.vcf',new Blob([vcardFrom(p)],{type:'text/vcard'}),'연락처');
+    else if(a==='ics')shareFile('event.ics',new Blob([/BEGIN:VCALENDAR/i.test(p.raw)?p.raw:`BEGIN:VCALENDAR\nVERSION:2.0\nPRODID:-//SEVIO//QR//KO\n${p.raw.trim()}\nEND:VCALENDAR`],{type:'text/calendar'}),'일정');
+    else if(a==='search')openUrl('https://www.google.com/search?q='+encodeURIComponent(p.text))});
+  if(p.type==='url'&&!it.safety){const a=await analyzeUrl(p.url);safety=a;updHist(id,{safety:a,warn:a.level!=='safe'});if(cur().name==='result'&&cur().p.id===id){const box=$('#vd');if(box)box.innerHTML=verdictHtml(a)}}
+  maybeInter()};
+
+/* ---------- 상품 바코드 ---------- */
+VIEWS.product=async(v,{id})=>{const it=getHist(id);if(!it){v.innerHTML=hdr('상품 바코드')+'<div class="empty">기록이 지워졌어요</div>';bindBack();return}
+  const code=it.text.trim();const valid=eanValid(code);const ctry=gs1Country(code);const bars=eanBars(code);const q=encodeURIComponent(code);
+  v.innerHTML=hdr('상품 바코드',`<button class="ibtn" id="fav" aria-label="즐겨찾기" style="color:${it.fav?'#E11D48':'var(--ink)'}">${ic(it.fav?'heartf':'heart')}</button><button class="ibtn" id="del" aria-label="삭제">${ic('trash')}</button>`)+`<div style="padding:4px 18px 28px">
+   <div class="card" style="text-align:center;padding:20px 16px">${bars?`<div class="bars" aria-hidden="true">${bars.split('').map(b=>`<i style="width:2.6px;background:${b==='1'?'#0F172A':'transparent'}"></i>`).join('')}</div>`:''}
+    <div class="mono" style="font-size:21px;font-weight:800;letter-spacing:2px">${esc(code)}</div>
+    <div style="display:flex;gap:6px;flex-wrap:wrap;justify-content:center;margin-top:10px"><span class="badge" style="background:#DBEAFE;color:#1E40AF">${esc(FMT_NAME[it.fmt]||'바코드')}</span>
+     <span class="badge" style="background:${valid?'#DCFCE7':'#FEE2E2'};color:${valid?'#166534':'#991B1B'}">${valid?'검증 번호 정상':'검증 번호 오류'}</span>${ctry?`<span class="badge" style="background:#E2E8F0;color:#334155">${esc(code.length===12?'0'+code.slice(0,2):code.slice(0,3))} · ${esc(ctry)}</span>`:''}</div>
+    ${ctry?`<div class="small muted" style="margin-top:8px">앞자리는 바코드를 발급한 나라예요(실제 생산국과 다를 수 있어요)</div>`:''}</div>
+   <div class="card"><b style="font-size:16px">이 바코드로 가격 비교</b><div class="small muted" style="margin-bottom:10px">누르면 쇼핑몰 검색 결과가 열려요</div>
+    ${SHOPS.map((s,i)=>`<button class="li" data-s="${i}" style="border:1px solid var(--line);border-radius:14px;margin-bottom:8px"><span class="ico" style="width:32px;height:32px;border-radius:10px;background:${s.bg};color:#fff;font-weight:800">${s.ini}</span><span style="flex:1;font-size:15px;font-weight:600">${s.name}</span>${ic('open',18)}</button>`).join('')}</div>
+   ${it.memo?`<div class="card"><div class="small muted">메모</div><div class="brk" style="white-space:pre-wrap">${esc(it.memo)}</div></div>`:''}
+   <div class="grid2"><button class="act" id="cartb">${ic('cart')}장보기 목록에 추가</button><button class="act" id="memo">${ic('edit')}메모 남기기</button></div>
+   <div class="grid2" style="margin-top:10px"><button class="act" id="cp">${ic('copy')}번호 복사</button><button class="act" id="again">${ic('scan')}다시 스캔</button></div></div>`;
+  bindBack();$$('[data-s]',v).forEach(b=>b.onclick=()=>openUrl(SHOPS[+b.dataset.s].u(q)));
+  $('#cp').onclick=()=>copyText(code);$('#again').onclick=()=>tab('scan');
+  $('#fav').onclick=()=>{updHist(id,{fav:!it.fav});render()};
+  $('#del').onclick=async()=>{const ok=await dialog('기록 삭제','<div class="muted">이 기록을 지울까요?</div>',[{label:'취소',value:0},{label:'삭제',cls:'pri',value:1}]);if(ok){delHist(id);back()}};
+  $('#memo').onclick=()=>dialog('메모',`<textarea class="inp" id="mm" maxlength="500" placeholder="예: 마트 3,980원, 다음엔 큰 용량으로">${esc(it.memo||'')}</textarea>`,[{label:'취소',value:0},{label:'저장',cls:'pri',get:()=>{updHist(id,{memo:$('#mm').value.trim()});closeOv();render()}}]);
+  $('#cartb').onclick=async()=>{const name=await new Promise(res=>{dialog('장보기 목록에 추가',`<div class="fld"><label for="cn">상품 이름 (선택)</label><input class="inp" id="cn" maxlength="60" placeholder="예: 생수 2L 6개"></div>`,[{label:'취소',value:null,get:()=>{closeOv();res(null)}},{label:'추가',cls:'pri',get:()=>{const n=$('#cn').value.trim();closeOv();res(n)}}])});
+    if(name===null)return;const s=lsGet('shop',[]);s.unshift({id:uid(),code,name,done:false,at:Date.now()});lsSet('shop',s.slice(0,300));toast('장보기 목록에 넣었어요')};
+  maybeInter()};
+VIEWS.shop=async(v)=>{const s=lsGet('shop',[]);v.innerHTML=hdr('장보기 목록',s.some(x=>x.done)?`<button class="ibtn" id="clr" aria-label="산 것 지우기">${ic('trash')}</button>`:'')+`<div style="padding:4px 18px 24px">
+  ${s.length?`<div class="list">${s.map(x=>`<div class="li"><button class="ibtn" data-t="${x.id}" aria-label="${x.done?'안 산 것으로':'산 것으로'}" style="width:36px;height:36px;border-radius:10px;border:2px solid ${x.done?'var(--pri)':'#CBD5E1'};background:${x.done?'var(--pri)':'#fff'};color:#fff">${x.done?ic('ok',18,2.6):''}</button><div style="flex:1;min-width:0;${x.done?'opacity:.5;text-decoration:line-through':''}"><div class="ell" style="font-weight:700">${esc(x.name||x.code)}</div><div class="small muted mono">${esc(x.code)}</div></div><button class="ibtn" data-d="${x.id}" aria-label="삭제">${ic('x',18)}</button></div>`).join('')}</div>`:'<div class="empty">상품 바코드를 스캔한 뒤 "장보기 목록에 추가"를 눌러 보세요</div>'}</div>`;
+  bindBack();$$('[data-t]',v).forEach(b=>b.onclick=()=>{const a=lsGet('shop',[]);const x=a.find(y=>y.id===b.dataset.t);if(x)x.done=!x.done;lsSet('shop',a);render()});
+  $$('[data-d]',v).forEach(b=>b.onclick=()=>{lsSet('shop',lsGet('shop',[]).filter(y=>y.id!==b.dataset.d));render()});const c=$('#clr');if(c)c.onclick=()=>{lsSet('shop',lsGet('shop',[]).filter(y=>!y.done));render()}};
+
+/* ---------- QR 만들기 ---------- */
+const CTYPES=[['url','웹 주소','link'],['wifi','와이파이','wifi'],['contact','연락처','card'],['text','텍스트','text'],['email','이메일','mail'],['sms','문자','sms'],['event','일정','event'],['geo','위치','map']];
+function wEsc(s){return String(s||'').replace(/([\\;,:"])/g,'\\$1')}
+function vEsc(s){return String(s||'').replace(/\\/g,'\\\\').replace(/\n/g,'\\n').replace(/([;,])/g,'\\$1')}
+function icsDate(v){return v?v.replace(/[-:]/g,'').slice(0,13)+'00':''}
+const FORMS={
+ url:{f:[['u','웹 주소','https://','url']],enc:d=>{let u=(d.u||'').trim();if(!u)return'';if(!/^[a-z][a-z0-9+.-]*:/i.test(u))u='https://'+u;return u},label:d=>(d.u||'').replace(/^https?:\/\//,'')},
+ wifi:{f:[['s','네트워크 이름','예: CAFE_GUEST_5G'],['p','비밀번호','','password'],['t','보안 방식','',['WPA','WEP','nopass']]],enc:d=>d.s?`WIFI:T:${d.t||'WPA'};S:${wEsc(d.s)};P:${d.t==='nopass'?'':wEsc(d.p)};;`:'',label:d=>d.s},
+ contact:{f:[['n','이름','홍길동'],['tel','전화','010-0000-0000','tel'],['em','이메일','name@example.com','email'],['org','회사·소속',''],['title','직함',''],['url','웹사이트','','url']],
+   enc:d=>d.n||d.tel?`BEGIN:VCARD\nVERSION:3.0\nN:${vEsc(d.n)};;;;\nFN:${vEsc(d.n)}\n${d.org?'ORG:'+vEsc(d.org)+'\n':''}${d.title?'TITLE:'+vEsc(d.title)+'\n':''}${d.tel?'TEL;TYPE=CELL:'+d.tel+'\n':''}${d.em?'EMAIL:'+d.em+'\n':''}${d.url?'URL:'+d.url+'\n':''}END:VCARD`:'',label:d=>'명함 · '+(d.n||d.tel)},
+ text:{f:[['x','내용','QR 코드에 담을 글','area']],enc:d=>d.x||'',label:d=>(d.x||'').split('\n')[0]},
+ email:{f:[['to','받는 사람','name@example.com','email'],['sub','제목',''],['body','내용','','area']],enc:d=>d.to?`mailto:${d.to}${d.sub||d.body?'?':''}${d.sub?'subject='+encodeURIComponent(d.sub):''}${d.sub&&d.body?'&':''}${d.body?'body='+encodeURIComponent(d.body):''}`:'',label:d=>d.to},
+ sms:{f:[['to','받는 번호','010-0000-0000','tel'],['body','내용','','area']],enc:d=>d.to?`SMSTO:${d.to}:${d.body||''}`:'',label:d=>d.to},
+ event:{f:[['ti','일정 이름','예: 동창 모임'],['st','시작','','datetime-local'],['en','끝','','datetime-local'],['loc','장소','']],enc:d=>d.ti&&d.st?`BEGIN:VEVENT\nSUMMARY:${vEsc(d.ti)}\nDTSTART:${icsDate(d.st)}\n${d.en?'DTEND:'+icsDate(d.en)+'\n':''}${d.loc?'LOCATION:'+vEsc(d.loc)+'\n':''}END:VEVENT`:'',label:d=>d.ti},
+ geo:{f:[['q','장소 이름 또는 주소','예: 서울시청']],enc:d=>d.q?`https://maps.apple.com/?q=${encodeURIComponent(d.q)}`:'',label:d=>d.q}
+};
+VIEWS.create=async(v)=>{const t=lsGet('ctype','url');const F=FORMS[t];const draft=lsGet('cdraft_'+t,{});
+  v.innerHTML=`<div class="page"><h1 class="ttl">QR 만들기</h1><div class="muted">무엇을 담을지 골라 주세요</div>
+   <div class="tgrid">${CTYPES.map(([k,l,i])=>`<button class="tbtn ${k===t?'on':''}" data-t="${k}" aria-pressed="${k===t}">${ic(i,24,1.8)}${l}</button>`).join('')}</div>
+   <div class="card"><b style="font-size:16px;display:block;margin-bottom:12px">${CTYPES.find(c=>c[0]===t)[1]} 정보</b>
+    ${F.f.map(([k,l,ph,ty])=>Array.isArray(ty)?`<div class="fld"><label>${l}</label><div class="chips">${ty.map(o=>`<button class="chip ${(draft[k]||ty[0])===o?'on':''}" data-k="${k}" data-o="${o}">${o==='nopass'?'없음':o==='WPA'?'WPA/WPA2/WPA3':o}</button>`).join('')}</div></div>`
+      :ty==='area'?`<div class="fld"><label for="f_${k}">${l}</label><textarea class="inp" id="f_${k}" data-k="${k}" placeholder="${esc(ph)}" maxlength="900">${esc(draft[k]||'')}</textarea></div>`
+      :`<div class="fld"><label for="f_${k}">${l}</label><input class="inp" id="f_${k}" data-k="${k}" type="${ty==='password'?'text':ty||'text'}" ${ty==='url'?'inputmode="url" autocapitalize="off"':''} ${ty==='email'?'autocapitalize="off"':''} autocomplete="off" placeholder="${esc(ph)}" value="${esc(draft[k]||'')}"></div>`).join('')}</div>
+   <button class="btn pri" id="mk">QR 코드 만들기</button></div>`;
+  const data=Object.assign({},draft);
+  $$('.tbtn',v).forEach(b=>b.onclick=()=>{lsSet('ctype',b.dataset.t);render()});
+  $$('[data-k]',v).forEach(el=>{if(el.tagName==='BUTTON')el.onclick=()=>{data[el.dataset.k]=el.dataset.o;lsSet('cdraft_'+t,data);$$(`[data-k="${el.dataset.k}"]`,v).forEach(x=>x.classList.toggle('on',x===el))};
+    else el.oninput=()=>{data[el.dataset.k]=el.value;lsSet('cdraft_'+t,data)}});
+  $('#mk').onclick=()=>{const text=F.enc(data);if(!text)return toast('필수 항목을 입력해 주세요');if(new Blob([text]).size>1800)return toast('내용이 너무 길어요. 조금 줄여 주세요');
+    go('design',{text,ctype:t,label:(F.label(data)||'').slice(0,60)})}};
+
+/* ---------- QR 그리기·꾸미기 ---------- */
+function qrMatrix(text,ecl){if(!window.qrcode)throw new Error('QR 라이브러리를 불러오지 못했어요');qrcode.stringToBytes=qrcode.stringToBytesFuncs['UTF-8'];
+  const q=qrcode(0,ecl);q.addData(text,'Byte');q.make();const n=q.getModuleCount();const m=[];for(let r=0;r<n;r++){const row=[];for(let c=0;c<n;c++)row.push(q.isDark(r,c));m.push(row)}return m}
+function rrect(x,X,Y,W,H,R){R=Math.min(R,W/2,H/2);x.beginPath();x.moveTo(X+R,Y);x.arcTo(X+W,Y,X+W,Y+H,R);x.arcTo(X+W,Y+H,X,Y+H,R);x.arcTo(X,Y+H,X,Y,R);x.arcTo(X,Y,X+W,Y,R);x.closePath()}
+function drawQR(cv,o){const m=qrMatrix(o.text,o.logo?'H':'M');const n=m.length;const quiet=4;const frame=o.frameText?1:0;
+  const size=o.px;const cell=Math.floor(size/(n+quiet*2));const qrW=cell*(n+quiet*2);const fh=frame?Math.round(qrW*0.17):0;const bw=frame?Math.max(4,Math.round(cell*0.9)):0;
+  cv.width=qrW+bw*2;cv.height=qrW+bw*2+fh;const x=cv.getContext('2d');x.fillStyle='#fff';x.fillRect(0,0,cv.width,cv.height);
+  if(frame){x.fillStyle=o.color;rrect(x,0,0,cv.width,cv.height,cell*3);x.fill();x.fillStyle='#fff';rrect(x,bw,bw,qrW,qrW,cell*2);x.fill();
+    x.fillStyle='#fff';x.font=`800 ${Math.round(fh*0.42)}px -apple-system,"Apple SD Gothic Neo","Noto Sans KR",sans-serif`;x.textAlign='center';x.textBaseline='middle';
+    let t=o.frameText;while(x.measureText(t).width>cv.width*0.9&&t.length>1)t=t.slice(0,-1);if(t!==o.frameText)t=t.slice(0,-1)+'…';x.fillText(t,cv.width/2,qrW+bw*2+fh/2-bw*0.3)}
+  const ox=bw+quiet*cell,oy=bw+quiet*cell;const inF=(r,c)=>(r<7&&c<7)||(r<7&&c>=n-7)||(r>=n-7&&c<7);
+  let hole=null;if(o.logo){const hs=Math.ceil(n*0.24);const s=Math.floor((n-hs)/2);hole=[s,s+hs]}
+  x.fillStyle=o.color;
+  for(let r=0;r<n;r++)for(let c=0;c<n;c++){if(!m[r][c]||inF(r,c))continue;if(hole&&r>=hole[0]&&r<hole[1]&&c>=hole[0]&&c<hole[1])continue;const X=ox+c*cell,Y=oy+r*cell;
+    if(o.shape==='square')x.fillRect(X,Y,cell,cell);else if(o.shape==='dot'){x.beginPath();x.arc(X+cell/2,Y+cell/2,cell*0.46,0,Math.PI*2);x.fill()}else{rrect(x,X+cell*0.04,Y+cell*0.04,cell*0.92,cell*0.92,cell*0.3);x.fill()}}
+  for(const [fr,fc] of [[0,0],[0,n-7],[n-7,0]]){const X=ox+fc*cell,Y=oy+fr*cell;const rad=o.shape==='square'?0:cell*(o.shape==='dot'?2.4:1.6);
+    x.fillStyle=o.color;rrect(x,X,Y,cell*7,cell*7,rad);x.fill();x.fillStyle='#fff';rrect(x,X+cell,Y+cell,cell*5,cell*5,rad*0.7);x.fill();x.fillStyle=o.color;rrect(x,X+cell*2,Y+cell*2,cell*3,cell*3,rad*0.6);x.fill()}
+  if(o.logo&&hole){const L=(hole[1]-hole[0])*cell;const X=ox+hole[0]*cell,Y=oy+hole[0]*cell;x.fillStyle='#fff';rrect(x,X,Y,L,L,cell*1.5);x.fill();
+    const pad=cell*0.8;x.save();rrect(x,X+pad,Y+pad,L-pad*2,L-pad*2,cell*1.2);x.clip();const im=o.logo;const k=Math.max((L-pad*2)/im.width,(L-pad*2)/im.height);x.drawImage(im,X+L/2-im.width*k/2,Y+L/2-im.height*k/2,im.width*k,im.height*k);x.restore()}
+  return cv}
+const COLORS=[['#0F172A','검정'],['#1D4ED8','파랑'],['#15803D','초록'],['#6D28D9','보라'],['#C2410C','주황'],['#BE123C','빨강']];
+let designLogo=null;
+VIEWS.design=async(v,p)=>{const st=Object.assign({color:'#0F172A',shape:'round',frameText:'',useLogo:false},lsGet('dstyle',{}),p.style||{});if(!designLogo)st.useLogo=false;
+  const frameDefault={url:'스캔해서 열기',wifi:'스캔해서 와이파이 연결',contact:'스캔해서 연락처 저장',text:'스캔해 보세요',email:'스캔해서 메일 보내기',sms:'스캔해서 문자 보내기',event:'스캔해서 일정 추가',geo:'스캔해서 길찾기'}[p.ctype]||'스캔해 보세요';
+  v.innerHTML=hdr('QR 꾸미기')+`<div style="padding:4px 18px 30px">
+   <div class="card" style="padding:6px 16px 12px"><div class="qrbox"><canvas id="cv" style="width:min(70vw,280px)" role="img" aria-label="만든 QR 코드"></canvas></div><div class="small muted ell" style="text-align:center">${esc(p.label||'')}</div></div>
+   <div class="card"><div class="small muted" style="font-weight:800;margin-bottom:8px">색상</div><div style="display:flex;gap:10px;flex-wrap:wrap">${COLORS.map(([h,n])=>`<button class="sw ${h===st.color?'on':''}" data-c="${h}" aria-label="${n}" style="background:${h}"></button>`).join('')}</div>
+    <div class="small muted" style="font-weight:800;margin:16px 0 8px">점 모양</div><div class="chips">${[['square','네모'],['round','둥근 네모'],['dot','동그라미']].map(([k,l])=>`<button class="chip ${k===st.shape?'on':''}" data-s="${k}">${l}</button>`).join('')}</div>
+    <div class="small muted" style="font-weight:800;margin:16px 0 8px;display:flex;align-items:center;gap:8px">가운데 로고 · 문구 테두리 ${isPro()?'':'<span class="pro-tag">PRO</span>'}</div>
+    <div class="grid2"><button class="chip ${st.useLogo?'on':''}" id="lg" style="height:44px">${st.useLogo?'로고 바꾸기':'로고 넣기'}</button><button class="chip ${st.frameText?'on':''}" id="fr" style="height:44px">${st.frameText?'문구 바꾸기':'문구 테두리'}</button></div>
+    ${st.useLogo||st.frameText?`<button class="btn ghost" id="clr">로고·문구 빼기</button>`:''}</div>
+   <div class="grid2"><button class="btn sec" id="sh">${ic('share')} 공유</button><button class="btn pri" id="sv">${ic('dl')} 이미지 저장</button></div>
+   <div class="small muted" style="text-align:center;margin-top:10px">${isPro()?'고해상도(인쇄용)로 저장돼요':`무료는 ${CONFIG.freePx}px, 프로는 인쇄용 ${CONFIG.proPx}px로 저장돼요`}</div></div>`;
+  bindBack();const cv=$('#cv');
+  const draw=(px)=>drawQR(px?document.createElement('canvas'):cv,{text:p.text,color:st.color,shape:st.shape,frameText:st.frameText,logo:st.useLogo?designLogo:null,px:px||700});
+  try{draw()}catch(e){toast(e.message||'QR을 만들지 못했어요',3000)}
+  const keep=()=>{lsSet('dstyle',{color:st.color,shape:st.shape});cur().p.style={color:st.color,shape:st.shape,frameText:st.frameText,useLogo:st.useLogo}};
+  $$('[data-c]',v).forEach(b=>b.onclick=()=>{st.color=b.dataset.c;keep();render()});
+  $$('[data-s]',v).forEach(b=>b.onclick=()=>{st.shape=b.dataset.s;keep();render()});
+  $('#lg').onclick=async()=>{if(!await needPro('가운데 로고'))return;const f=await pickImage();if(!f)return;const url=URL.createObjectURL(f);
+    try{designLogo=await new Promise((res,rej)=>{const i=new Image();i.onload=()=>res(i);i.onerror=rej;i.src=url});st.useLogo=true;keep();render()}catch(e){toast('이미지를 열 수 없어요')}};
+  $('#fr').onclick=async()=>{if(!await needPro('문구 테두리'))return;
+    dialog('테두리 문구',`<div class="fld"><label for="ft">QR 아래에 들어갈 문구</label><input class="inp" id="ft" maxlength="24" value="${esc(st.frameText||frameDefault)}"></div>`,[{label:'취소',value:0},{label:'적용',cls:'pri',get:()=>{st.frameText=$('#ft').value.trim();closeOv();keep();render()}}])};
+  const c2=$('#clr');if(c2)c2.onclick=()=>{st.useLogo=false;st.frameText='';keep();render()};
+  const out=async(share)=>{let c;try{c=draw(isPro()?CONFIG.proPx:CONFIG.freePx)}catch(e){return toast('QR을 만들지 못했어요')}
+    const blob=await new Promise(r=>c.toBlob(r,'image/png'));if(!p.saved){const it=addHist({kind:'make',text:p.text,type:p.ctype,label:p.label});p.saved=it.id;cur().p.saved=it.id}
+    await shareFile(`QR_${(p.label||'code').replace(/[\\/:*?"<>|\s]+/g,'_').slice(0,30)}.png`,blob,share?'QR 코드':'QR 코드 저장');if(!share)toast(NATIVE?'"이미지 저장"을 누르면 사진첩에 저장돼요':'저장했어요',2600)};
+  $('#sh').onclick=()=>out(true);$('#sv').onclick=()=>out(false)};
+
+/* ---------- 기록 ---------- */
+function rowHtml(it){const p=parseContent(it.text,it.fmt);const [tn,ti,tb,tf]=TYPE_INFO[p.type]||TYPE_INFO.text;const lv=it.safety&&it.safety.level;
+  const ibg=lv==='danger'?'#FEE2E2':lv==='caution'?'#FFEDD5':tb,ifg=lv==='danger'?'#991B1B':lv==='caution'?'#9A3412':tf;
+  return`<button class="li" data-id="${it.id}"><span class="ico" style="background:${ibg};color:${ifg}">${ic(ti,20)}</span><span style="flex:1;min-width:0"><div class="ell" style="font-size:15px;font-weight:700">${esc(it.kind==='make'&&it.label?it.label:itemTitle(it))}</div><div class="small muted">${it.kind==='make'?'만든 '+tn+' QR':tn} · ${fmtTime(it.at)}${it.memo?' · 메모':''}</div></span>
+   ${lv&&lv!=='safe'?`<span class="badge" style="background:${lv==='danger'?'#FEE2E2':'#FFEDD5'};color:${lv==='danger'?'#991B1B':'#9A3412'}">${lv==='danger'?'위험':'주의'}</span>`:''}${it.fav?`<span style="color:#E11D48">${ic('heartf',18)}</span>`:''}</button>`}
+function bindRows(v){$$('[data-id]',v).forEach(b=>b.onclick=()=>{const it=getHist(b.dataset.id);if(!it)return;
+  if(it.kind==='make')go('design',{text:it.text,ctype:it.type,label:it.label,saved:it.id});else go(parseContent(it.text,it.fmt).type==='product'?'product':'result',{id:it.id})})}
+VIEWS.history=async(v)=>{const st=cur().p;st.f=st.f||'all';st.q=st.q||'';
+  const draw=()=>{const q=st.q.trim().toLowerCase();const rows=hist().filter(it=>(st.f==='all'||(st.f==='fav'?it.fav:it.kind===st.f))&&(!q||(it.text+' '+(it.label||'')+' '+(it.memo||'')).toLowerCase().includes(q)));
+    $('#hl').innerHTML=rows.length?`<div class="list">${rows.slice(0,300).map(rowHtml).join('')}</div>`:`<div class="empty">${hist().length?'찾는 기록이 없어요':'스캔하거나 만든 코드가 여기에 모여요'}</div>`;bindRows(v)};
+  v.innerHTML=`<div class="page"><div class="row" style="justify-content:space-between;margin-bottom:12px"><h1 class="ttl" style="margin:0">기록</h1><button class="chip" id="csv">CSV 내보내기</button></div>
+   <label class="row" style="height:46px;border-radius:14px;background:#fff;border:1px solid var(--line);padding:0 14px;color:var(--mute);gap:8px">${ic('search',20)}<input id="q" placeholder="링크, 상품 번호, 메모 검색" value="${esc(st.q)}" style="border:0;outline:0;flex:1;font-size:16px;background:transparent;color:var(--ink)" aria-label="기록 검색"></label>
+   <div class="chips" style="margin:12px 0">${[['all','전체'],['scan','스캔'],['make','만든 코드'],['fav','즐겨찾기']].map(([k,l])=>`<button class="chip ${k===st.f?'on':''}" data-f="${k}">${l}</button>`).join('')}</div><div id="hl"></div></div>`;
+  draw();$('#q').oninput=e=>{st.q=e.target.value;draw()};$$('[data-f]',v).forEach(b=>b.onclick=()=>{st.f=b.dataset.f;$$('[data-f]',v).forEach(x=>x.classList.toggle('on',x===b));draw()});
+  $('#csv').onclick=async()=>{if(!hist().length)return toast('내보낼 기록이 없어요');if(!await needPro('CSV 내보내기'))return;
+    const q=s=>'"'+String(s==null?'':s).replace(/"/g,'""')+'"';const rows=[['날짜','구분','종류','형식','내용','안전 검사','즐겨찾기','메모']];
+    for(const it of hist()){const p=parseContent(it.text,it.fmt);const d=new Date(it.at);rows.push([`${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`,it.kind==='make'?'만듦':'스캔',(TYPE_INFO[p.type]||TYPE_INFO.text)[0],FMT_NAME[it.fmt]||it.fmt||'QR 코드',it.text,it.safety?{safe:'이상 없음',caution:'주의',danger:'위험'}[it.safety.level]:'',it.fav?'예':'',it.memo||''])}
+    const csv='\uFEFF'+rows.map(r=>r.map(q).join(',')).join('\r\n');const d=new Date();await shareFile(`QR기록_${d.getFullYear()}${pad(d.getMonth()+1)}${pad(d.getDate())}.csv`,new Blob([csv],{type:'text/csv'}),'QR 기록')}};
+
+/* ---------- 설정 · 프로 ---------- */
+VIEWS.settings=async(v)=>{const on=isPro();
+  v.innerHTML=`<div class="page"><h1 class="ttl" style="margin-bottom:14px">설정</h1>
+   <button class="card" id="gp" style="width:100%;border:0;text-align:left;display:flex;align-items:center;gap:14px;background:${on?'#fff':'var(--pri)'};color:${on?'var(--ink)':'#fff'}"><img src="icon.png" alt="" style="width:48px;height:48px;border-radius:12px"><span style="flex:1"><b style="font-size:17px">${on?'프로 이용 중':'프로로 업그레이드'}</b><div class="small" style="margin-top:3px;${on?'color:var(--sub)':'opacity:.92'}">${on?'광고 없이 모든 기능을 쓰고 있어요':'광고 제거 · 로고 넣기 · CSV 내보내기'}</div></span>${ic('chev')}</button>
+   <div class="sec-t">기능</div><div class="list">
+    <button class="li" id="shop"><span class="ico" style="background:#DCFCE7;color:#166534">${ic('cart',20)}</span><b style="flex:1">장보기 목록</b>${ic('chev',18)}</button>
+    <button class="li" id="rs"><span class="ico" style="background:var(--pri-l);color:var(--pri)">${ic('star',20)}</span><b style="flex:1">구매 복원</b>${ic('chev',18)}</button>
+    <button class="li" id="clh"><span class="ico" style="background:#FEE2E2;color:#991B1B">${ic('trash',20)}</span><b style="flex:1">기록 모두 지우기</b>${ic('chev',18)}</button></div>
+   <div class="sec-t">정보</div><div class="list">
+    <button class="li" id="pp"><span class="ico" style="background:#F1F5F9;color:#334155">${ic('lock',20)}</span><b style="flex:1">개인정보처리방침</b>${ic('open',18)}</button>
+    <button class="li" id="tm"><span class="ico" style="background:#F1F5F9;color:#334155">${ic('info',20)}</span><b style="flex:1">이용약관 (EULA)</b>${ic('open',18)}</button>
+    <button class="li" id="ct"><span class="ico" style="background:#F1F5F9;color:#334155">${ic('mail',20)}</span><b style="flex:1">문의하기</b>${ic('chev',18)}</button>
+    <button class="li" id="sf"><span class="ico" style="background:#F1F5F9;color:#334155">${ic('shield',20)}</span><b style="flex:1">안전 검사는 어떻게 하나요?</b>${ic('chev',18)}</button></div>
+   <div style="text-align:center;margin-top:24px" class="small muted">${esc(CONFIG.appName)} v${CONFIG.appVersion} · SEVIO</div></div>`;
+  $('#gp').onclick=()=>go('pro');$('#shop').onclick=()=>go('shop');$('#rs').onclick=restoreBuy;
+  $('#clh').onclick=async()=>{const ok=await dialog('기록 모두 지우기','<div class="muted">스캔하고 만든 기록이 모두 지워져요. 되돌릴 수 없어요.</div>',[{label:'취소',cls:'pri',value:0},{label:'모두 지우기',value:1}]);if(ok){saveHist([]);toast('기록을 지웠어요')}};
+  $('#pp').onclick=()=>openUrl(CONFIG.privacyUrl);$('#tm').onclick=()=>openUrl(CONFIG.termsUrl);
+  $('#ct').onclick=()=>dialog('문의하기',`<div class="muted">아래 메일로 문의해 주세요.</div><div class="card mono" style="background:var(--bg);margin:10px 0 0">${esc(CONFIG.supportEmail)}</div>`,[{label:'복사',get:()=>copyText(CONFIG.supportEmail)},{label:'메일 쓰기',cls:'pri',get:()=>{closeOv();location.href='mailto:'+CONFIG.supportEmail}}]);
+  $('#sf').onclick=()=>dialog('안전 검사 방법',`<div class="muted small" style="line-height:1.7">링크를 열기 전에 다음을 확인해요.<br>• 단축 URL이면 실제 주소 확인<br>• 보안 연결(HTTPS) 여부<br>• 숫자 주소(IP), 특수문자 도메인, 주소 안의 @<br>• 은행·택배·공공기관 등 유명 사이트를 흉내 낸 이름<br>• 도메인이 최근에 등록됐는지(공개 등록 정보 조회)<br><br>등록일 확인과 단축 URL 확인 때만 주소의 도메인 이름이 조회 서비스로 전송돼요. 스캔한 내용과 기록은 휴대폰 밖으로 나가지 않아요.<br><br>검사 결과는 참고용이며 모든 위험을 막아 주지는 않아요.</div>`,[{label:'확인',cls:'pri',value:1}])};
+VIEWS.pro=async(v)=>{const on=isPro();let sel='y';
+  const draw=()=>{v.innerHTML=`<div style="padding:calc(var(--sat) + 8px) 12px 0;display:flex;justify-content:flex-end"><button class="ibtn" id="bk" aria-label="닫기">${ic('x',24,2)}</button></div>
+   <div style="padding:0 24px 30px"><div style="text-align:center"><img src="icon.png" alt="" style="width:72px;height:72px;border-radius:18px"><h1 style="font-size:23px;margin:10px 0 4px">${esc(CONFIG.appName)} 프로</h1><div class="muted">광고 없이, 더 많은 기능을</div></div>
+    <div style="margin:22px 0">${['모든 광고 제거','QR 가운데 로고 · 문구 테두리','인쇄용 고해상도 QR 저장','연속 스캔 무제한','기록 CSV 내보내기'].map(t=>`<div class="row" style="margin-bottom:12px;font-size:15.5px;font-weight:600"><span style="color:var(--pri)">${ic('ok',20,2.4)}</span>${t}</div>`).join('')}</div>
+    ${on?`<div class="card" style="background:var(--pri-l);text-align:center"><b>프로 이용 중이에요</b><div class="small muted" style="margin-top:4px">구독 관리·해지는 ${STORE_NAME} 계정 설정에서 할 수 있어요</div></div>`:`
+    <button class="plan ${sel==='y'?'on':''}" data-p="y"><span class="radio"></span><span style="flex:1"><b style="font-size:16px">1년</b><div class="small muted">한 달에 약 990원</div></span><b style="font-size:16px">${esc(storePrice(CONFIG.subYearly,CONFIG.priceYearly))}</b></button>
+    <button class="plan ${sel==='m'?'on':''}" data-p="m"><span class="radio"></span><span style="flex:1"><b style="font-size:16px">1개월</b><div class="small muted">언제든 해지</div></span><b style="font-size:16px">${esc(storePrice(CONFIG.subMonthly,CONFIG.priceMonthly))}</b></button>
+    <button class="btn pri" id="buy" style="margin-top:6px">구독 시작하기</button>`}
+    <button class="btn ghost" id="rs" style="margin-top:6px">구매 복원</button>
+    <div class="small" style="color:var(--mute);line-height:1.55;text-align:center;margin-top:8px">${IOS||!NATIVE?'결제는 확인 시 Apple ID 계정으로 청구됩니다. 현재 기간이 끝나기 최소 24시간 전에 해지하지 않으면 구독이 자동으로 갱신되며, 갱신 요금은 기간 종료 전 24시간 이내에 청구됩니다. 구독은 App Store 계정 설정에서 관리하거나 해지할 수 있습니다.':'구독은 Google Play에서 관리하거나 해지할 수 있어요.'}</div>
+    <div class="row" style="justify-content:center;gap:18px;margin-top:10px"><a href="#" id="tm" class="small">이용약관(EULA)</a><a href="#" id="pp" class="small">개인정보처리방침</a></div></div>`;
+   bindBack();$$('[data-p]',v).forEach(b=>b.onclick=()=>{sel=b.dataset.p;draw()});const bb=$('#buy');if(bb)bb.onclick=()=>buy(sel);$('#rs').onclick=restoreBuy;
+   $('#tm').onclick=e=>{e.preventDefault();openUrl(CONFIG.termsUrl)};$('#pp').onclick=e=>{e.preventDefault();openUrl(CONFIG.privacyUrl)}};draw()};
+
+/* ---------- 시작 ---------- */
+(async function init(){
+  if(NATIVE){const A=plug('App');if(A)A.addListener('backButton',()=>{if(stack.length>1)back();else A.exitApp&&A.exitApp()})}
+  render();setTimeout(()=>{adsInit();billingInit()},800)})();
+</script>
+</body>
+</html>
