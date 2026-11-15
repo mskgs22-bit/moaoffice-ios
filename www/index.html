@@ -251,7 +251,7 @@ async function shareFile(name,blob,title){
   try{const f=new File([blob],name,{type:blob.type});if(navigator.canShare&&navigator.canShare({files:[f]})){await navigator.share({files:[f],title:title||name});return}}catch(e){if(e&&e.name==='AbortError')return}
   const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=name;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(a.href),4000)}
 async function shareText(t){if(NATIVE){try{await plug('Share').share({text:t})}catch(e){}return}try{if(navigator.share){await navigator.share({text:t});return}}catch(e){if(e&&e.name==='AbortError')return}copyText(t)}
-async function openUrl(u){const B=plug('Browser');if(NATIVE&&B&&/^https?:/i.test(u)){try{await B.open({url:u});return}catch(e){}}
+async function openUrl(u){const L=plug('AppLauncher');if(NATIVE&&L){try{await L.openUrl({url:u});return}catch(e){}}
   if(/^https?:/i.test(u))window.open(u,'_blank');else location.href=u}
 
 /* ---------- 기록 ---------- */
