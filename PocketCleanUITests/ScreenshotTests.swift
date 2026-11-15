@@ -13,6 +13,19 @@ final class ScreenshotTests: XCTestCase {
         if e.waitForExistence(timeout: timeout) { e.tap() }
     }
 
+    private func back(_ app: XCUIApplication) {
+        let close = app.buttons["닫기"]
+        if close.exists { close.tap(); sleep(1) }
+        let b = app.navigationBars.buttons.element(boundBy: 0)
+        if b.exists { b.tap(); sleep(1) }
+    }
+
+    private func open(_ app: XCUIApplication, _ title: String) -> Bool {
+        let t = app.staticTexts[title].firstMatch
+        guard t.waitForExistence(timeout: 4) else { return false }
+        t.tap(); sleep(2); return true
+    }
+
     func testTour() throws {
         let app = XCUIApplication()
         app.launchArguments += ["-noads"]
@@ -29,33 +42,35 @@ final class ScreenshotTests: XCTestCase {
         tapIfExists(app.buttons["사진 접근 허용"])
         app.swipeUp(); app.swipeDown()
         tapIfExists(app.buttons["분석하기"])
-        sleep(12)
-        app.swipeDown()
-        shot(app, "02_home_after")
-
-        app.tabBars.buttons["사진·영상"].tap()
+        // 분석이 끝날 때까지 기다림 (최대 90초)
+        let again = app.buttons["다시 분석하기"]
+        for _ in 0..<45 { if again.exists && again.isEnabled { break }; sleep(2) }
         sleep(1)
+        app.swipeDown()
+        shot(app, "S1_home")
+
+        app.tabBars.buttons["사진·영상"].tap(); sleep(1)
         shot(app, "03_media_hub")
-        let exact = app.staticTexts["똑같은 사진"].firstMatch
-        if exact.waitForExistence(timeout: 3) { exact.tap(); sleep(2); shot(app, "04_exact"); app.navigationBars.buttons.firstMatch.tap() }
-        let sim = app.staticTexts["비슷한 사진"].firstMatch
-        if sim.waitForExistence(timeout: 3) { sim.tap(); sleep(2); shot(app, "05_similar"); app.navigationBars.buttons.firstMatch.tap() }
-        let sw = app.staticTexts["스와이프 정리"].firstMatch
-        if sw.waitForExistence(timeout: 3) { sw.tap(); sleep(2); shot(app, "06_swipe"); app.navigationBars.buttons.firstMatch.tap() }
+        if open(app, "똑같은 사진") { shot(app, "04_exact"); back(app) }
+        if open(app, "비슷한 사진") { shot(app, "S2_similar"); back(app) }
+        if open(app, "스와이프 정리") { shot(app, "S3_swipe"); back(app) }
 
         app.tabBars.buttons["파일"].tap(); sleep(1); shot(app, "07_files")
+
         app.tabBars.buttons["도구"].tap(); sleep(1); shot(app, "08_tools")
-        tapIfExists(app.staticTexts["연락처 정리"])
-        tapIfExists(app.buttons["연락처 접근 허용"])
-        app.tap()
-        sleep(3); shot(app, "09_contacts")
-        app.navigationBars.buttons.firstMatch.tap()
-        tapIfExists(app.staticTexts["동영상 압축"]); sleep(1); shot(app, "10_compress")
-        app.navigationBars.buttons.firstMatch.tap()
-        tapIfExists(app.staticTexts["비밀 보관함"]); sleep(1); shot(app, "11_vault")
-        app.navigationBars.buttons.firstMatch.tap()
+        if open(app, "연락처 정리") {
+            tapIfExists(app.buttons["연락처 접근 허용"], timeout: 2)
+            sleep(3)
+            if app.buttons["닫기"].exists { app.buttons["닫기"].tap(); sleep(1) }
+            shot(app, "S4_contacts")
+            back(app)
+        }
+        if open(app, "동영상 압축") { shot(app, "S5_compress"); back(app) }
+        if open(app, "비밀 보관함") { shot(app, "S6_vault"); back(app) }
 
         app.tabBars.buttons["설정"].tap(); sleep(1); shot(app, "12_settings")
-        tapIfExists(app.staticTexts["프리미엄 시작하기"]); sleep(3); shot(app, "13_paywall")
+        tapIfExists(app.staticTexts["프리미엄 시작하기"])
+        sleep(5)
+        shot(app, "S7_paywall")
     }
 }

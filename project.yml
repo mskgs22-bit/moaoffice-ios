@@ -22,6 +22,8 @@ targets:
     sources:
       - path: PocketClean/Sources
       - path: PocketClean/Resources
+        excludes:
+          - "*.storekit"
     dependencies:
       - package: GoogleMobileAds
     settings:
@@ -42,6 +44,7 @@ targets:
     scheme:
       testTargets:
         - PocketCleanUITests
+      storeKitConfiguration: PocketClean/Resources/Products.storekit
   PocketCleanUITests:
     type: bundle.ui-testing
     platform: iOS

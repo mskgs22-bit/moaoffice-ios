@@ -19,6 +19,7 @@ workflows:
           echo "SIM=$SIM" >> $CM_ENV
           xcrun simctl boot "$SIM" || true
           xcrun simctl bootstatus "$SIM" -b
+          xcrun simctl status_bar "$SIM" override --time "9:41" --batteryState charged --batteryLevel 100 --wifiBars 3 --cellularBars 4 || true
           xcrun simctl addmedia "$SIM" ci/media/*.jpg ci/media/*.png ci/media/*.mp4 ci/media/contacts.vcf || xcrun simctl addmedia "$SIM" ci/media/*.jpg ci/media/*.png ci/media/*.mp4
           xcrun simctl privacy "$SIM" grant photos kr.pocketclean.app || true
           xcrun simctl privacy "$SIM" grant contacts kr.pocketclean.app || true
@@ -44,6 +45,71 @@ workflows:
                   print('PCIMG '+n+' '+base64.b64encode(open('/tmp/'+n+'.jpg','rb').read()).decode())
           PY
         ignore_failure: true
+    artifacts:
+      - build/screens/*.png
+      - build/screens/*.json
+      - build/xcodebuild.log
+
+  pc-shots:
+    name: Pocket Clean store screenshots
+    instance_type: mac_mini_m2
+    max_build_duration: 60
+    integrations:
+      app_store_connect: MoaOffice ASC
+    environment:
+      xcode: latest
+    scripts:
+      - name: Install XcodeGen
+        script: brew install xcodegen
+      - name: Generate Xcode project
+        script: xcodegen generate
+      - name: Prepare simulator with sample media
+        script: |
+          SIM=$(xcrun simctl list devices available -j | python3 -c "import json,sys; d=json.load(sys.stdin)['devices']; c=[x for k,v in d.items() if 'iOS' in k for x in v if x['name'].startswith('iPhone') and 'Pro Max' in x['name']] or [x for k,v in d.items() if 'iOS' in k for x in v if x['name'].startswith('iPhone')]; print(c[-1]['udid'])")
+          echo "SIM=$SIM" >> $CM_ENV
+          xcrun simctl boot "$SIM" || true
+          xcrun simctl bootstatus "$SIM" -b
+          xcrun simctl status_bar "$SIM" override --time "9:41" --batteryState charged --batteryLevel 100 --wifiBars 3 --cellularBars 4 || true
+          xcrun simctl addmedia "$SIM" ci/media/*.jpg ci/media/*.png ci/media/*.mp4 ci/media/contacts.vcf || xcrun simctl addmedia "$SIM" ci/media/*.jpg ci/media/*.png ci/media/*.mp4
+          xcrun simctl privacy "$SIM" grant photos kr.pocketclean.app || true
+          xcrun simctl privacy "$SIM" grant contacts kr.pocketclean.app || true
+      - name: Build & UI test on simulator
+        script: |
+          set -o pipefail
+          mkdir -p build
+          xcodebuild test -project PocketClean.xcodeproj -scheme PocketClean \
+            -destination "id=$SIM" -resultBundlePath build/Results.xcresult \
+            CODE_SIGNING_ALLOWED=NO 2>&1 | tee build/xcodebuild.log | xcpretty
+      - name: Export screenshots
+        script: |
+          mkdir -p build/screens
+          xcrun xcresulttool export attachments --path build/Results.xcresult --output-path build/screens || true
+          ls -la build/screens
+          cd build/screens && python3 - <<'PY'
+          import json,subprocess,base64,os
+          m=json.load(open('manifest.json'))
+          for t in m:
+              for a in t.get('attachments',[]):
+                  f=a['exportedFileName']; n=a.get('suggestedHumanReadableName',f).split('_0_')[0]
+                  subprocess.run(['sips','-Z','640','-s','format','jpeg','-s','formatOptions','60',f,'--out','/tmp/'+n+'.jpg'],capture_output=True)
+                  print('PCIMG '+n+' '+base64.b64encode(open('/tmp/'+n+'.jpg','rb').read()).decode())
+          PY
+        ignore_failure: true
+      - name: Upload screenshots to App Store Connect
+        script: |
+          mkdir -p build/store
+          python3 - <<'PY'
+          import json,subprocess
+          m=json.load(open('build/screens/manifest.json'))
+          for t in m:
+              for a in t.get('attachments',[]):
+                  n=a.get('suggestedHumanReadableName','').split('_0_')[0]
+                  if n.startswith('S'):
+                      subprocess.run(['sips','-s','format','jpeg','-s','formatOptions','90','build/screens/'+a['exportedFileName'],'--out','build/store/'+n+'.jpg'],check=True,capture_output=True)
+          PY
+          sips -g pixelWidth -g pixelHeight build/store/*.jpg | grep pixel | head -4
+          pip3 install --break-system-packages -q pyjwt cryptography || pip3 install -q pyjwt cryptography
+          python3 ci/asc_upload.py build/store
     artifacts:
       - build/screens/*.png
       - build/screens/*.json
