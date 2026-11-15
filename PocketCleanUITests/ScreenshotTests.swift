@@ -56,6 +56,6 @@ final class ScreenshotTests: XCTestCase {
         app.navigationBars.buttons.firstMatch.tap()
 
         app.tabBars.buttons["설정"].tap(); sleep(1); shot(app, "12_settings")
-        tapIfExists(app.buttons["프리미엄 시작하기"]); sleep(3); shot(app, "13_paywall")
+        tapIfExists(app.staticTexts["프리미엄 시작하기"]); sleep(3); shot(app, "13_paywall")
     }
 }

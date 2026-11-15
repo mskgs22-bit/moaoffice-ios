@@ -34,6 +34,15 @@ workflows:
           mkdir -p build/screens
           xcrun xcresulttool export attachments --path build/Results.xcresult --output-path build/screens || true
           ls -la build/screens
+          cd build/screens && python3 - <<'PY'
+          import json,subprocess,base64,os
+          m=json.load(open('manifest.json'))
+          for t in m:
+              for a in t.get('attachments',[]):
+                  f=a['exportedFileName']; n=a.get('suggestedHumanReadableName',f).split('_0_')[0]
+                  subprocess.run(['sips','-Z','640','-s','format','jpeg','-s','formatOptions','60',f,'--out','/tmp/'+n+'.jpg'],capture_output=True)
+                  print('PCIMG '+n+' '+base64.b64encode(open('/tmp/'+n+'.jpg','rb').read()).decode())
+          PY
         ignore_failure: true
     artifacts:
       - build/screens/*.png
