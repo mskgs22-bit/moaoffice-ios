@@ -1,0 +1,56 @@
+name: PocketClean
+options:
+  bundleIdPrefix: kr.pocketclean
+  deploymentTarget:
+    iOS: "16.0"
+  developmentLanguage: ko
+  createIntermediateGroups: true
+settings:
+  base:
+    MARKETING_VERSION: "1.0.0"
+    CURRENT_PROJECT_VERSION: "1"
+    SWIFT_VERSION: "5.0"
+    DEVELOPMENT_TEAM: ""
+packages:
+  GoogleMobileAds:
+    url: https://github.com/googleads/swift-package-manager-google-mobile-ads
+    from: "12.0.0"
+targets:
+  PocketClean:
+    type: application
+    platform: iOS
+    sources:
+      - path: PocketClean/Sources
+      - path: PocketClean/Resources
+    dependencies:
+      - package: GoogleMobileAds
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: kr.pocketclean.app
+        PRODUCT_NAME: PocketClean
+        INFOPLIST_FILE: PocketClean/Info.plist
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+        ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME: AccentColor
+        TARGETED_DEVICE_FAMILY: "1"
+        CODE_SIGN_STYLE: Automatic
+        ENABLE_USER_SCRIPT_SANDBOXING: NO
+        # 시뮬레이터·테스트는 Google 테스트 ID. 출시 빌드는 codemagic 이 실제 ID 로 바꾼다.
+        GAD_APP_ID: ca-app-pub-3940256099942544~1458002511
+        GAD_BANNER_ID: ca-app-pub-3940256099942544/2934735716
+        GAD_INTERSTITIAL_ID: ca-app-pub-3940256099942544/4411468910
+        GAD_REWARDED_ID: ca-app-pub-3940256099942544/1712485313
+    scheme:
+      testTargets:
+        - PocketCleanUITests
+  PocketCleanUITests:
+    type: bundle.ui-testing
+    platform: iOS
+    sources:
+      - path: PocketCleanUITests
+    dependencies:
+      - target: PocketClean
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: kr.pocketclean.app.uitests
+        GENERATE_INFOPLIST_FILE: YES
+        CODE_SIGN_STYLE: Automatic

@@ -1,0 +1,84 @@
+# Pocket Clean iOS — Codemagic 클라우드 Mac 빌드
+# 1) pc-test    : 시뮬레이터에 샘플 사진·영상·연락처를 넣고 빌드 + 화면 테스트 + 스크린샷
+# 2) pc-release : App Store Connect API 키로 서명 → App Store Connect 업로드
+workflows:
+  pc-test:
+    name: Pocket Clean simulator test
+    instance_type: mac_mini_m2
+    max_build_duration: 60
+    environment:
+      xcode: latest
+    scripts:
+      - name: Install XcodeGen
+        script: brew install xcodegen
+      - name: Generate Xcode project
+        script: xcodegen generate
+      - name: Prepare simulator with sample media
+        script: |
+          SIM=$(xcrun simctl list devices available -j | python3 -c "import json,sys; d=json.load(sys.stdin)['devices']; c=[x for k,v in d.items() if 'iOS' in k for x in v if x['name'].startswith('iPhone') and 'Pro Max' in x['name']] or [x for k,v in d.items() if 'iOS' in k for x in v if x['name'].startswith('iPhone')]; print(c[-1]['udid'])")
+          echo "SIM=$SIM" >> $CM_ENV
+          xcrun simctl boot "$SIM" || true
+          xcrun simctl bootstatus "$SIM" -b
+          xcrun simctl addmedia "$SIM" ci/media/*.jpg ci/media/*.png ci/media/*.mp4 ci/media/contacts.vcf || xcrun simctl addmedia "$SIM" ci/media/*.jpg ci/media/*.png ci/media/*.mp4
+          xcrun simctl privacy "$SIM" grant photos kr.pocketclean.app || true
+          xcrun simctl privacy "$SIM" grant contacts kr.pocketclean.app || true
+      - name: Build & UI test on simulator
+        script: |
+          set -o pipefail
+          mkdir -p build
+          xcodebuild test -project PocketClean.xcodeproj -scheme PocketClean \
+            -destination "id=$SIM" -resultBundlePath build/Results.xcresult \
+            CODE_SIGNING_ALLOWED=NO 2>&1 | tee build/xcodebuild.log | xcpretty
+      - name: Export screenshots
+        script: |
+          mkdir -p build/screens
+          xcrun xcresulttool export attachments --path build/Results.xcresult --output-path build/screens || true
+          ls -la build/screens
+        ignore_failure: true
+    artifacts:
+      - build/screens/*.png
+      - build/screens/*.json
+      - build/xcodebuild.log
+
+  pc-release:
+    name: Pocket Clean App Store
+    instance_type: mac_mini_m2
+    max_build_duration: 60
+    integrations:
+      app_store_connect: MoaOffice ASC
+    environment:
+      xcode: latest
+      ios_signing:
+        distribution_type: app_store
+        bundle_identifier: kr.pocketclean.app
+      vars:
+        GAD_APP_ID: "TBD"
+        GAD_BANNER_ID: "TBD"
+        GAD_INTERSTITIAL_ID: "TBD"
+        GAD_REWARDED_ID: "TBD"
+        APP_STORE_APPLE_ID: "TBD"
+    scripts:
+      - name: Install XcodeGen
+        script: brew install xcodegen
+      - name: Real AdMob IDs
+        script: |
+          sed -i '' "s|GAD_APP_ID: .*|GAD_APP_ID: $GAD_APP_ID|; s|GAD_BANNER_ID: .*|GAD_BANNER_ID: $GAD_BANNER_ID|; s|GAD_INTERSTITIAL_ID: .*|GAD_INTERSTITIAL_ID: $GAD_INTERSTITIAL_ID|; s|GAD_REWARDED_ID: .*|GAD_REWARDED_ID: $GAD_REWARDED_ID|" project.yml
+      - name: Generate Xcode project
+        script: xcodegen generate
+      - name: Use signing profiles
+        script: xcode-project use-profiles
+      - name: Build number
+        script: |
+          LATEST=$(app-store-connect get-latest-app-store-build-number "$APP_STORE_APPLE_ID" 2>/dev/null || echo 0)
+          TF=$(app-store-connect get-latest-testflight-build-number "$APP_STORE_APPLE_ID" 2>/dev/null || echo 0)
+          [ "$TF" -gt "$LATEST" ] 2>/dev/null && LATEST=$TF
+          agvtool new-version -all $((LATEST + 1))
+      - name: Build ipa
+        script: xcode-project build-ipa --project PocketClean.xcodeproj --scheme PocketClean
+    artifacts:
+      - build/ios/ipa/*.ipa
+      - /tmp/xcodebuild_logs/*.log
+    publishing:
+      app_store_connect:
+        auth: integration
+        submit_to_testflight: false
