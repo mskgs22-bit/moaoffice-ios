@@ -9,10 +9,41 @@ SUBS = ["6835133410", "6835134547"]
 API = "https://api.appstoreconnect.apple.com"
 
 
+def private_key():
+    k = os.environ["APP_STORE_CONNECT_PRIVATE_KEY"].strip().strip('"').strip("'")
+    if k.startswith("@file:"):
+        k = open(os.path.expanduser(k[6:])).read()
+    k = k.replace("\\n", "\n").replace("\r", "")
+    if "BEGIN" not in k:
+        import base64
+        try:
+            dec = base64.b64decode(k).decode()
+            if "BEGIN" in dec: k = dec
+        except Exception:
+            pass
+    if "BEGIN" not in k:
+        body = "".join(k.split())
+        k = "-----BEGIN PRIVATE KEY-----\n" + "\n".join(body[i:i+64] for i in range(0, len(body), 64)) + "\n-----END PRIVATE KEY-----\n"
+    elif "\n" not in k.strip():
+        # 한 줄로 붙은 PEM: 머리/꼬리 사이를 64자 줄로 복원
+        head, rest = k.split("-----", 2)[1], k.split("-----", 2)[2]
+        body, tail = rest.split("-----END", 1)
+        b = "".join(body.split())
+        k = "-----" + head + "-----\n" + "\n".join(b[i:i+64] for i in range(0, len(b), 64)) + "\n-----END" + tail
+    print("key format: lines=%d begins=%s" % (k.count("\n"), k.split("\n")[0][:27]))
+    return k
+
+
+_KEY = None
+
+
 def token():
+    global _KEY
+    if _KEY is None:
+        _KEY = private_key()
     now = int(time.time())
     return jwt.encode({"iss": os.environ["APP_STORE_CONNECT_ISSUER_ID"], "iat": now, "exp": now + 1000, "aud": "appstoreconnect-v1"},
-                      os.environ["APP_STORE_CONNECT_PRIVATE_KEY"], algorithm="ES256",
+                      _KEY, algorithm="ES256",
                       headers={"kid": os.environ["APP_STORE_CONNECT_KEY_IDENTIFIER"], "typ": "JWT"})
 
 
