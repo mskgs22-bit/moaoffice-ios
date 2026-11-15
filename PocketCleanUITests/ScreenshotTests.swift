@@ -42,11 +42,10 @@ final class ScreenshotTests: XCTestCase {
         tapIfExists(app.buttons["사진 접근 허용"])
         app.swipeUp(); app.swipeDown()
         tapIfExists(app.buttons["분석하기"])
-        // 분석이 끝날 때까지 기다림 (최대 90초)
+        // 분석이 끝날 때까지 기다림 (최대 4분)
         let again = app.buttons["다시 분석하기"]
-        for _ in 0..<45 { if again.exists && again.isEnabled { break }; sleep(2) }
-        sleep(1)
-        app.swipeDown()
+        for _ in 0..<120 { if again.exists && again.isEnabled { break }; sleep(2) }
+        sleep(2)
         shot(app, "S1_home")
 
         app.tabBars.buttons["사진·영상"].tap(); sleep(1)
