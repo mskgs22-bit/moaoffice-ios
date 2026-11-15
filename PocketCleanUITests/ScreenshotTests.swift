@@ -13,6 +13,14 @@ final class ScreenshotTests: XCTestCase {
         if e.waitForExistence(timeout: timeout) { e.tap() }
     }
 
+    private func allowSystemAlert() {
+        let sb = XCUIApplication(bundleIdentifier: "com.apple.springboard")
+        for l in ["Allow Full Access", "전체 접근 허용", "Allow", "허용", "OK", "확인"] {
+            let b = sb.buttons[l]
+            if b.waitForExistence(timeout: l == "Allow Full Access" ? 4 : 0.5) { b.tap(); sleep(1); return }
+        }
+    }
+
     private func back(_ app: XCUIApplication) {
         let close = app.buttons["닫기"]
         if close.exists { close.tap(); sleep(1) }
@@ -40,8 +48,10 @@ final class ScreenshotTests: XCTestCase {
         shot(app, "01_home_before")
 
         tapIfExists(app.buttons["사진 접근 허용"])
+        allowSystemAlert()
         app.swipeUp(); app.swipeDown()
-        tapIfExists(app.buttons["분석하기"])
+        allowSystemAlert()
+        tapIfExists(app.buttons["분석하기"], timeout: 2)
         // 분석이 끝날 때까지 기다림 (최대 4분)
         let again = app.buttons["다시 분석하기"]
         for _ in 0..<120 { if again.exists && again.isEnabled { break }; sleep(2) }
@@ -59,6 +69,7 @@ final class ScreenshotTests: XCTestCase {
         app.tabBars.buttons["도구"].tap(); sleep(1); shot(app, "08_tools")
         if open(app, "연락처 정리") {
             tapIfExists(app.buttons["연락처 접근 허용"], timeout: 2)
+            allowSystemAlert()
             sleep(3)
             if app.buttons["닫기"].exists { app.buttons["닫기"].tap(); sleep(1) }
             shot(app, "S4_contacts")
