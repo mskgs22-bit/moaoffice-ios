@@ -61,11 +61,11 @@ workflows:
         distribution_type: app_store
         bundle_identifier: kr.pocketclean.app
       vars:
-        GAD_APP_ID: "TBD"
-        GAD_BANNER_ID: "TBD"
-        GAD_INTERSTITIAL_ID: "TBD"
-        GAD_REWARDED_ID: "TBD"
-        APP_STORE_APPLE_ID: "TBD"
+        GAD_APP_ID: "ca-app-pub-9038740106483632~4309515635"
+        GAD_BANNER_ID: "ca-app-pub-9038740106483632/5870009312"
+        GAD_INTERSTITIAL_ID: "ca-app-pub-9038740106483632/3243845979"
+        GAD_REWARDED_ID: "ca-app-pub-9038740106483632/5678437620"
+        APP_STORE_APPLE_ID: "6835133384"
     scripts:
       - name: Install XcodeGen
         script: brew install xcodegen
