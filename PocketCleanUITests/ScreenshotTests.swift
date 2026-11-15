@@ -36,7 +36,7 @@ final class ScreenshotTests: XCTestCase {
 
     func testTour() throws {
         let app = XCUIApplication()
-        app.launchArguments += ["-noads"]
+        app.launchArguments += ["-noads", "-AppleLanguages", "(ko)", "-AppleLocale", "ko_KR"]
         addUIInterruptionMonitor(withDescription: "권한") { alert in
             for l in ["Allow Full Access", "전체 접근 허용", "Allow", "허용", "OK", "확인"] {
                 if alert.buttons[l].exists { alert.buttons[l].tap(); return true }

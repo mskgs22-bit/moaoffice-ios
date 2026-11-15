@@ -19,6 +19,8 @@ workflows:
           echo "SIM=$SIM" >> $CM_ENV
           xcrun simctl boot "$SIM" || true
           xcrun simctl bootstatus "$SIM" -b
+          xcrun simctl spawn "$SIM" defaults write -g AppleLocale ko_KR || true
+          xcrun simctl spawn "$SIM" defaults write -g AppleLanguages -array ko en || true
           xcrun simctl status_bar "$SIM" override --time "9:41" --batteryState charged --batteryLevel 100 --wifiBars 3 --cellularBars 4 || true
           xcrun simctl addmedia "$SIM" ci/media/*.jpg ci/media/*.png ci/media/*.mp4 ci/media/contacts.vcf || xcrun simctl addmedia "$SIM" ci/media/*.jpg ci/media/*.png ci/media/*.mp4
           xcrun simctl privacy "$SIM" grant photos kr.pocketclean.app || true
@@ -69,6 +71,8 @@ workflows:
           echo "SIM=$SIM" >> $CM_ENV
           xcrun simctl boot "$SIM" || true
           xcrun simctl bootstatus "$SIM" -b
+          xcrun simctl spawn "$SIM" defaults write -g AppleLocale ko_KR || true
+          xcrun simctl spawn "$SIM" defaults write -g AppleLanguages -array ko en || true
           xcrun simctl status_bar "$SIM" override --time "9:41" --batteryState charged --batteryLevel 100 --wifiBars 3 --cellularBars 4 || true
           xcrun simctl addmedia "$SIM" ci/media/*.jpg ci/media/*.png ci/media/*.mp4 ci/media/contacts.vcf || xcrun simctl addmedia "$SIM" ci/media/*.jpg ci/media/*.png ci/media/*.mp4
           xcrun simctl privacy "$SIM" grant photos kr.pocketclean.app || true
