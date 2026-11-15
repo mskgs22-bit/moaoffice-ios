@@ -201,12 +201,52 @@ const CONFIG={
   freeBatch:10, freePx:600, proPx:1600,
   privacyUrl:'https://sevio.co.kr/qrscanner/privacy',
   termsUrl:'https://www.apple.com/legal/internet-services/itunes/dev/stdeula/',
-  supportEmail:'sevio2848@gmail.com', appVersion:'1.0.0', appName:'QR & Barcode Scanner'
+  supportEmail:'sevio2848@gmail.com', appVersion:'1.0.0', appName:'QR & Barcode Scanner',
+  codeRedeemDays:30   // 이용권 코드: 발급 후 이 기간 안에 등록해야 함
 };
+
+/* ---------- 이용권 코드 (안드로이드 전용, 관리자 지인용) ---------- */
+const CODE_SECRET_HEX='009c8e81fcfbbda94d35a197564f313a2e4bad5a7cf998dac4eabce88892867a';
+const CODE_PLANS=[{k:'w1',l:'1주일',days:7},{k:'m1',l:'1개월',days:30},{k:'m6',l:'6개월',days:182},{k:'y1',l:'1년',days:365},{k:'inf',l:'영구',days:-1}];
+const CODE_EPOCH=Date.UTC(2025,0,1);const B32='0123456789ABCDEFGHJKMNPQRSTVWXYZ';
+const SHA_K=new Uint32Array([0x428a2f98,0x71374491,0xb5c0fbcf,0xe9b5dba5,0x3956c25b,0x59f111f1,0x923f82a4,0xab1c5ed5,0xd807aa98,0x12835b01,0x243185be,0x550c7dc3,0x72be5d74,0x80deb1fe,0x9bdc06a7,0xc19bf174,0xe49b69c1,0xefbe4786,0x0fc19dc6,0x240ca1cc,0x2de92c6f,0x4a7484aa,0x5cb0a9dc,0x76f988da,0x983e5152,0xa831c66d,0xb00327c8,0xbf597fc7,0xc6e00bf3,0xd5a79147,0x06ca6351,0x14292967,0x27b70a85,0x2e1b2138,0x4d2c6dfc,0x53380d13,0x650a7354,0x766a0abb,0x81c2c92e,0x92722c85,0xa2bfe8a1,0xa81a664b,0xc24b8b70,0xc76c51a3,0xd192e819,0xd6990624,0xf40e3585,0x106aa070,0x19a4c116,0x1e376c08,0x2748774c,0x34b0bcb5,0x391c0cb3,0x4ed8aa4a,0x5b9cca4f,0x682e6ff3,0x748f82ee,0x78a5636f,0x84c87814,0x8cc70208,0x90befffa,0xa4506ceb,0xbef9a3f7,0xc67178f2]);
+function sha256(m){const l=m.length,nb=((l+9+63)>>6)<<6;const b=new Uint8Array(nb);b.set(m);b[l]=0x80;const dv=new DataView(b.buffer);dv.setUint32(nb-4,(l*8)>>>0);dv.setUint32(nb-8,Math.floor(l*8/4294967296));
+ const H=new Uint32Array([0x6a09e667,0xbb67ae85,0x3c6ef372,0xa54ff53a,0x510e527f,0x9b05688c,0x1f83d9ab,0x5be0cd19]);const W=new Uint32Array(64);
+ for(let o=0;o<nb;o+=64){for(let i=0;i<16;i++)W[i]=dv.getUint32(o+i*4);for(let i=16;i<64;i++){const a=W[i-15],c=W[i-2];const s0=((a>>>7)|(a<<25))^((a>>>18)|(a<<14))^(a>>>3);const s1=((c>>>17)|(c<<15))^((c>>>19)|(c<<13))^(c>>>10);W[i]=(W[i-16]+s0+W[i-7]+s1)|0}
+  let a=H[0],bb=H[1],c=H[2],d=H[3],e=H[4],f=H[5],g=H[6],h=H[7];
+  for(let i=0;i<64;i++){const S1=((e>>>6)|(e<<26))^((e>>>11)|(e<<21))^((e>>>25)|(e<<7));const ch=(e&f)^(~e&g);const t1=(h+S1+ch+SHA_K[i]+W[i])|0;const S0=((a>>>2)|(a<<30))^((a>>>13)|(a<<19))^((a>>>22)|(a<<10));const mj=(a&bb)^(a&c)^(bb&c);const t2=(S0+mj)|0;h=g;g=f;f=e;e=(d+t1)|0;d=c;c=bb;bb=a;a=(t1+t2)|0}
+  H[0]+=a;H[1]+=bb;H[2]+=c;H[3]+=d;H[4]+=e;H[5]+=f;H[6]+=g;H[7]+=h}
+ const out=new Uint8Array(32);const ov=new DataView(out.buffer);for(let i=0;i<8;i++)ov.setUint32(i*4,H[i]);return out}
+const u8cat=(...a)=>{const o=new Uint8Array(a.reduce((s,x)=>s+x.length,0));let p=0;for(const x of a){o.set(x,p);p+=x.length}return o};
+const utf8=s=>new TextEncoder().encode(s);
+const hex2u8=h=>new Uint8Array(h.match(/../g).map(x=>parseInt(x,16)));
+function hmac256(key,msg){const k=key.length>64?sha256(key):key;const kb=new Uint8Array(64);kb.set(k);return sha256(u8cat(kb.map(x=>x^0x5c),sha256(u8cat(kb.map(x=>x^0x36),msg))))}
+function b32enc(bytes){let bits=0,val=0,out='';for(const b of bytes){val=(val<<8)|b;bits+=8;while(bits>=5){out+=B32[(val>>>(bits-5))&31];bits-=5}}if(bits>0)out+=B32[(val<<(5-bits))&31];return out}
+function b32dec(str){let bits=0,val=0;const out=[];for(const ch of str){const v=B32.indexOf(ch);if(v<0)return null;val=((val<<5)|v)&0xffff;bits+=5;if(bits>=8){out.push((val>>>(bits-8))&255);bits-=8}}return new Uint8Array(out)}
+const normCode=s=>String(s||'').toUpperCase().replace(/[^0-9A-Z]/g,'').replace(/O/g,'0').replace(/[IL]/g,'1').replace(/U/g,'V');
+const fmtCode=s=>s.match(/.{1,5}/g).join('-');
+const todayDay=(t=Date.now())=>Math.floor((t-CODE_EPOCH)/864e5);
+function codeMac(p4,dev){return hmac256(hex2u8(CODE_SECRET_HEX),u8cat(p4,utf8(dev?normCode(dev):'*'))).slice(0,5)}
+function makeCode(planIdx,dev,day=todayDay(),nonce=Math.floor(Math.random()*1024)){const bound=dev?1:0;const v=((1&3)<<30)|((planIdx&7)<<27)|(bound<<26)|((day&0xffff)<<10)|(nonce&1023);
+  const p4=new Uint8Array([(v>>>24)&255,(v>>>16)&255,(v>>>8)&255,v&255]);return fmtCode(b32enc(u8cat(p4,codeMac(p4,dev))))}
+function readCode(code,dev){const c=normCode(code);if(c.length!==15)return{ok:false,why:'코드 길이가 맞지 않아요'};const b=b32dec(c);if(!b||b.length<9)return{ok:false,why:'잘못된 코드예요'};
+  const p4=b.slice(0,4),mac=b.slice(4,9);const v=((p4[0]<<24)|(p4[1]<<16)|(p4[2]<<8)|p4[3])>>>0;const ver=v>>>30,plan=(v>>>27)&7,bound=(v>>>26)&1,day=(v>>>10)&0xffff;
+  if(ver!==1||plan>=CODE_PLANS.length)return{ok:false,why:'잘못된 코드예요'};const exp=codeMac(p4,bound?dev:null);
+  if(exp.some((x,i)=>x!==mac[i]))return{ok:false,why:bound?'이 기기용 코드가 아니거나 잘못된 코드예요':'잘못된 코드예요'};return{ok:true,plan,bound:!!bound,day,code:c}}
+
 
 /* ---------- 프로 상태 ---------- */
 function subOwned(){const s=lsGet('subOwned',null);return !!(s&&s.v&&Date.now()-s.t<4*864e5)}
-function isPro(){return subOwned()}
+function effNow(){const n=Date.now();const last=lsGet('lastNow',0);if(n>last)lsSet('lastNow',n);return Math.max(n,last)}
+function codeUntil(){return IOS?0:lsGet('proUntil',0)}
+function isPro(){const u=codeUntil();return subOwned()||u===-1||u>effNow()}
+function proLabel(){if(subOwned())return'구독 중';const u=codeUntil();if(u===-1)return'영구 이용권';if(u>effNow()){const d=new Date(u);return`${d.getFullYear()}.${pad(d.getMonth()+1)}.${pad(d.getDate())}까지`}return''}
+function redeemCode(input){const r=readCode(input,null);if(!r.ok)return r;
+  const used=lsGet('usedCodes',[]);if(used.includes(r.code))return{ok:false,why:'이미 등록한 코드예요'};
+  if(todayDay(effNow())-r.day>CONFIG.codeRedeemDays)return{ok:false,why:'등록 기간이 지난 코드예요'};
+  const P=CODE_PLANS[r.plan];let u=codeUntil();
+  if(P.days===-1)u=-1;else if(u!==-1){u=Math.max(u,effNow())+P.days*864e5}
+  lsSet('proUntil',u);used.push(r.code);lsSet('usedCodes',used.slice(-200));setBanner(false);return{ok:true,plan:P}}
 
 /* ---------- 광고 ---------- */
 let adReady=false,bannerMade=false,bannerOn=false,lastInter=Date.now(),interLoaded=false,resultCount=0;
@@ -621,6 +661,7 @@ VIEWS.history=async(v)=>{const st=cur().p;st.f=st.f||'all';st.q=st.q||'';
     const csv='\uFEFF'+rows.map(r=>r.map(q).join(',')).join('\r\n');const d=new Date();await shareFile(`QR기록_${d.getFullYear()}${pad(d.getMonth()+1)}${pad(d.getDate())}.csv`,new Blob([csv],{type:'text/csv'}),'QR 기록')}};
 
 /* ---------- 설정 · 프로 ---------- */
+let verTaps=0,verTimer=null;
 VIEWS.settings=async(v)=>{const on=isPro();
   v.innerHTML=`<div class="page"><h1 class="ttl" style="margin-bottom:14px">설정</h1>
    <button class="card" id="gp" style="width:100%;border:0;text-align:left;display:flex;align-items:center;gap:14px;background:${on?'#fff':'var(--pri)'};color:${on?'var(--ink)':'#fff'}"><img src="icon.png" alt="" style="width:48px;height:48px;border-radius:12px"><span style="flex:1"><b style="font-size:17px">${on?'프로 이용 중':'프로로 업그레이드'}</b><div class="small" style="margin-top:3px;${on?'color:var(--sub)':'opacity:.92'}">${on?'광고 없이 모든 기능을 쓰고 있어요':'광고 제거 · 로고 넣기 · CSV 내보내기'}</div></span>${ic('chev')}</button>
@@ -633,7 +674,8 @@ VIEWS.settings=async(v)=>{const on=isPro();
     <button class="li" id="tm"><span class="ico" style="background:#F1F5F9;color:#334155">${ic('info',20)}</span><b style="flex:1">이용약관 (EULA)</b>${ic('open',18)}</button>
     <button class="li" id="ct"><span class="ico" style="background:#F1F5F9;color:#334155">${ic('mail',20)}</span><b style="flex:1">문의하기</b>${ic('chev',18)}</button>
     <button class="li" id="sf"><span class="ico" style="background:#F1F5F9;color:#334155">${ic('shield',20)}</span><b style="flex:1">안전 검사는 어떻게 하나요?</b>${ic('chev',18)}</button></div>
-   <div style="text-align:center;margin-top:24px" class="small muted">${esc(CONFIG.appName)} v${CONFIG.appVersion} · SEVIO</div></div>`;
+   <div style="text-align:center;margin-top:24px"><span id="ver" class="small muted" style="padding:10px 20px;display:inline-block;user-select:none;-webkit-user-select:none">${esc(CONFIG.appName)} v${CONFIG.appVersion} · SEVIO</span></div></div>`;
+  $('#ver').onclick=()=>{if(IOS)return;verTaps++;clearTimeout(verTimer);verTimer=setTimeout(()=>verTaps=0,1500);if(verTaps>=7){verTaps=0;go('redeem')}};
   $('#gp').onclick=()=>go('pro');$('#shop').onclick=()=>go('shop');$('#rs').onclick=restoreBuy;
   $('#clh').onclick=async()=>{const ok=await dialog('기록 모두 지우기','<div class="muted">스캔하고 만든 기록이 모두 지워져요. 되돌릴 수 없어요.</div>',[{label:'취소',cls:'pri',value:0},{label:'모두 지우기',value:1}]);if(ok){saveHist([]);toast('기록을 지웠어요')}};
   $('#pp').onclick=()=>openUrl(CONFIG.privacyUrl);$('#tm').onclick=()=>openUrl(CONFIG.termsUrl);
@@ -652,6 +694,18 @@ VIEWS.pro=async(v)=>{const on=isPro();let sel='y';
     <div class="row" style="justify-content:center;gap:18px;margin-top:10px"><a href="#" id="tm" class="small">이용약관(EULA)</a><a href="#" id="pp" class="small">개인정보처리방침</a></div></div>`;
    bindBack();$$('[data-p]',v).forEach(b=>b.onclick=()=>{sel=b.dataset.p;draw()});const bb=$('#buy');if(bb)bb.onclick=()=>buy(sel);$('#rs').onclick=restoreBuy;
    $('#tm').onclick=e=>{e.preventDefault();openUrl(CONFIG.termsUrl)};$('#pp').onclick=e=>{e.preventDefault();openUrl(CONFIG.privacyUrl)}};draw()};
+
+/* ---------- 숨겨진 이용권 코드 입력 (안드로이드) ---------- */
+VIEWS.redeem=async(v)=>{
+  v.innerHTML=`<div style="padding:calc(var(--sat) + 8px) 12px 0;display:flex;justify-content:flex-end"><button class="ibtn" id="bk" aria-label="닫기">${ic('x',24,2)}</button></div>
+   <div class="page"><h1 class="ttl" style="margin-bottom:14px">이용권 코드</h1>
+   <div class="card"><div class="small muted">현재 상태</div><div style="margin-top:4px">${isPro()?`<b style="color:var(--pri)">프로</b> · ${esc(proLabel())}`:'<span class="muted">무료</span>'}</div></div>
+   <div class="card" style="margin-top:12px"><div class="small muted" style="margin-bottom:8px">코드 입력</div>
+    <input id="cd" placeholder="XXXXX-XXXXX-XXXXX" autocapitalize="characters" autocomplete="off" spellcheck="false" style="width:100%;height:50px;border:1px solid var(--line);border-radius:12px;font-family:monospace;font-size:18px;letter-spacing:1px;text-align:center">
+    <button class="btn pri" id="rg" style="margin-top:12px">등록</button></div></div>`;
+  bindBack();
+  $('#rg').onclick=async()=>{const r=redeemCode($('#cd').value);if(!r.ok)return toast(r.why,3000);
+    await dialog('등록 완료',`<div style="line-height:1.6"><b>${r.plan.l}</b> 이용권이 적용됐어요.<br><span class="muted">${esc(proLabel())}</span></div>`,[{label:'확인',cls:'pri',value:1}]);render()}};
 
 /* ---------- 시작 ---------- */
 (async function init(){
