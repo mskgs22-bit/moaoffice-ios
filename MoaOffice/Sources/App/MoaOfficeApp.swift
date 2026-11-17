@@ -13,11 +13,11 @@ struct MoaOfficeApp: App {
 
     var body: some Scene {
         WindowGroup {
-            HomeView()
+            RootView()
                 .environmentObject(library)
                 .environmentObject(store)
                 .tint(.brand)
-                .onOpenURL { url in library.importFile(url) }
+                .onOpenURL { url in library.receiveFile(url) }
                 .task { await AdsBootstrap.start() }
         }
     }

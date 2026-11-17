@@ -1,36 +1,105 @@
 {
-  "identifier" : "A1B2C3D4",
-  "nonRenewingSubscriptions" : [],
-  "products" : [],
-  "settings" : { "_failTransactionsEnabled" : false },
-  "subscriptionGroups" : [
+  "identifier": "A1B2C3D4",
+  "nonRenewingSubscriptions": [],
+  "products": [],
+  "settings": {
+    "_failTransactionsEnabled": false
+  },
+  "subscriptionGroups": [
     {
-      "id" : "21000001",
-      "localizations" : [],
-      "name" : "MoaOffice Premium",
-      "subscriptions" : [
+      "id": "21000001",
+      "localizations": [],
+      "name": "MoaOffice Premium",
+      "subscriptions": [
         {
-          "adHocOffers" : [], "codeOffers" : [],
-          "displayPrice" : "2.99", "familyShareable" : false,
-          "groupNumber" : 1, "internalID" : "6700000001",
-          "introductoryOffer" : null,
-          "localizations" : [ { "description" : "Remove all ads", "displayName" : "Ad-free (Monthly)", "locale" : "en_US" } ],
-          "productID" : "com.moaoffice.app.adfree.monthly",
-          "recurringSubscriptionPeriod" : "P1M",
-          "referenceName" : "Ad-free Monthly", "subscriptionGroupID" : "21000001", "type" : "RecurringSubscription"
+          "adHocOffers": [],
+          "codeOffers": [],
+          "displayPrice": "2.99",
+          "familyShareable": false,
+          "groupNumber": 2,
+          "internalID": "6700000001",
+          "introductoryOffer": null,
+          "localizations": [
+            {
+              "description": "Remove all ads",
+              "displayName": "Ad-free (Monthly)",
+              "locale": "en_US"
+            }
+          ],
+          "productID": "com.moaoffice.app.adfree.monthly",
+          "recurringSubscriptionPeriod": "P1M",
+          "referenceName": "Ad-free Monthly",
+          "subscriptionGroupID": "21000001",
+          "type": "RecurringSubscription"
         },
         {
-          "adHocOffers" : [], "codeOffers" : [],
-          "displayPrice" : "29.99", "familyShareable" : false,
-          "groupNumber" : 2, "internalID" : "6700000002",
-          "introductoryOffer" : null,
-          "localizations" : [ { "description" : "Remove all ads", "displayName" : "Ad-free (Yearly)", "locale" : "en_US" } ],
-          "productID" : "com.moaoffice.app.adfree.yearly",
-          "recurringSubscriptionPeriod" : "P1Y",
-          "referenceName" : "Ad-free Yearly", "subscriptionGroupID" : "21000001", "type" : "RecurringSubscription"
+          "adHocOffers": [],
+          "codeOffers": [],
+          "displayPrice": "29.99",
+          "familyShareable": false,
+          "groupNumber": 2,
+          "internalID": "6700000002",
+          "introductoryOffer": null,
+          "localizations": [
+            {
+              "description": "Remove all ads",
+              "displayName": "Ad-free (Yearly)",
+              "locale": "en_US"
+            }
+          ],
+          "productID": "com.moaoffice.app.adfree.yearly",
+          "recurringSubscriptionPeriod": "P1Y",
+          "referenceName": "Ad-free Yearly",
+          "subscriptionGroupID": "21000001",
+          "type": "RecurringSubscription"
+        },
+        {
+          "adHocOffers": [],
+          "codeOffers": [],
+          "displayPrice": "4.99",
+          "familyShareable": false,
+          "groupNumber": 1,
+          "internalID": "6700000010",
+          "introductoryOffer": null,
+          "localizations": [
+            {
+              "description": "Ad-free + all scan and PDF tools",
+              "displayName": "Pro (Monthly)",
+              "locale": "en_US"
+            }
+          ],
+          "productID": "com.moaoffice.app.pro.monthly",
+          "recurringSubscriptionPeriod": "P1M",
+          "referenceName": "Pro Monthly",
+          "subscriptionGroupID": "21000001",
+          "type": "RecurringSubscription"
+        },
+        {
+          "adHocOffers": [],
+          "codeOffers": [],
+          "displayPrice": "44.99",
+          "familyShareable": false,
+          "groupNumber": 1,
+          "internalID": "6700000011",
+          "introductoryOffer": null,
+          "localizations": [
+            {
+              "description": "Ad-free + all scan and PDF tools",
+              "displayName": "Pro (Yearly)",
+              "locale": "en_US"
+            }
+          ],
+          "productID": "com.moaoffice.app.pro.yearly",
+          "recurringSubscriptionPeriod": "P1Y",
+          "referenceName": "Pro Yearly",
+          "subscriptionGroupID": "21000001",
+          "type": "RecurringSubscription"
         }
       ]
     }
   ],
-  "version" : { "major" : 3, "minor" : 0 }
+  "version": {
+    "major": 3,
+    "minor": 0
+  }
 }

@@ -20,16 +20,27 @@ workflows:
       - name: Build & UI test on simulator
         script: |
           set -o pipefail
+          mkdir -p build
           SIM=$(xcrun simctl list devices available -j | python3 -c "import json,sys; d=json.load(sys.stdin)['devices']; c=[x for k,v in d.items() if 'iOS' in k for x in v if x['name'].startswith('iPhone') and 'Pro Max' in x['name']] or [x for k,v in d.items() if 'iOS' in k for x in v if x['name'].startswith('iPhone')]; print(c[-1]['udid'])")
           echo "Simulator: $SIM"
           xcodebuild test -project MoaOffice.xcodeproj -scheme MoaOffice \
             -destination "id=$SIM" -resultBundlePath build/Results.xcresult \
-            CODE_SIGNING_ALLOWED=NO | xcpretty
+            CODE_SIGNING_ALLOWED=NO 2>&1 | tee build/xcodebuild.log | xcpretty
       - name: Export screenshots
         script: |
           mkdir -p build/screens
           xcrun xcresulttool export attachments --path build/Results.xcresult --output-path build/screens || true
           ls -la build/screens
+          cd build/screens && python3 - <<'PY'
+          import json,subprocess,base64
+          m=json.load(open('manifest.json'))
+          for t in m:
+              for a in t.get('attachments',[]):
+                  f=a['exportedFileName']; n=a.get('suggestedHumanReadableName',f).split('_0_')[0]
+                  if not n.startswith('ko_'): continue
+                  subprocess.run(['sips','-Z','640','-s','format','jpeg','-s','formatOptions','60',f,'--out','/tmp/'+n+'.jpg'],capture_output=True)
+                  print('PCIMG '+n+' '+base64.b64encode(open('/tmp/'+n+'.jpg','rb').read()).decode())
+          PY
         ignore_failure: true
     artifacts:
       - build/screens/*.png

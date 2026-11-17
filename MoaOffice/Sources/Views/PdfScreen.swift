@@ -5,6 +5,7 @@ import PDFKit
 final class PdfController: ObservableObject {
     let view = PDFView()
     let url: URL
+    var received = false
     @Published var locked = false
     @Published var failed = false
     @Published var dirty = false
@@ -61,6 +62,16 @@ final class PdfController: ObservableObject {
 
     func save() {
         guard let doc = view.document else { return }
+        if received {
+            // 받은 파일은 원본을 두고 사본으로
+            let copy = Library.uniqueURL(url.deletingPathExtension().lastPathComponent + L(" (편집)", " (edited)") + ".pdf")
+            if doc.write(to: copy) {
+                Library.recordSource(.received, name: copy.lastPathComponent)
+                dirty = false
+                toast = L("사본으로 저장했어요: ", "Saved as copy: ") + copy.lastPathComponent
+            } else { toast = String(localized: "Could not save this PDF.") }
+            return
+        }
         if doc.write(to: url) {
             dirty = false
             toast = String(localized: "Saved")
@@ -81,7 +92,11 @@ struct PdfScreen: View {
     @State private var password = ""
     @State private var wrong = false
 
-    init(url: URL) { _c = StateObject(wrappedValue: PdfController(url: url)) }
+    init(url: URL, received: Bool = false) {
+        let c = PdfController(url: url)
+        c.received = received
+        _c = StateObject(wrappedValue: c)
+    }
 
     var body: some View {
         Group {

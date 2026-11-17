@@ -1,2 +1,5 @@
 "CFBundleDisplayName" = "MoaOffice";
 "NSUserTrackingUsageDescription" = "더 관련성 높은 광고를 보여드리는 데 사용됩니다. 문서는 기기 밖으로 나가지 않습니다.";
+
+"NSCameraUsageDescription" = "문서를 스캔하고 QR 코드를 읽을 때 카메라를 써요. 사진은 휴대폰 밖으로 나가지 않아요.";
+"NSPhotoLibraryAddUsageDescription" = "스캔한 쪽, 증명사진, QR 코드를 고르신 경우 사진첩에 저장해요.";

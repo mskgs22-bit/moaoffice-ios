@@ -19,6 +19,8 @@
 	<key>UISupportedInterfaceOrientations</key><array><string>UIInterfaceOrientationPortrait</string><string>UIInterfaceOrientationLandscapeLeft</string><string>UIInterfaceOrientationLandscapeRight</string></array>
 	<key>UISupportedInterfaceOrientations~ipad</key><array><string>UIInterfaceOrientationPortrait</string><string>UIInterfaceOrientationPortraitUpsideDown</string><string>UIInterfaceOrientationLandscapeLeft</string><string>UIInterfaceOrientationLandscapeRight</string></array>
 	<key>LSSupportsOpeningDocumentsInPlace</key><false/>
+	<key>NSCameraUsageDescription</key><string>The camera is used to scan documents and read QR codes. Photos stay on your device.</string>
+	<key>NSPhotoLibraryAddUsageDescription</key><string>Scanned pages, ID photos and QR codes are saved to your photo library when you choose.</string>
 	<key>NSUserTrackingUsageDescription</key><string>Your data is used to show you more relevant ads. Documents never leave your device.</string>
 	<key>GADApplicationIdentifier</key><string>$(GAD_APP_ID)</string>
 	<key>GADBannerID</key><string>$(GAD_BANNER_ID)</string>
