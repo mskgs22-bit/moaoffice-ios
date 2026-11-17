@@ -186,7 +186,7 @@ struct PageOrganizerView: View {
     }
 
     private func shift(_ d: Int) {
-        let order = selected.sorted(by: d < 0 ? (<) : (>))
+        let order: [Int] = d < 0 ? selected.sorted() : selected.sorted(by: >)
         var newSel = Set<Int>()
         for i in order {
             let j = i + d

@@ -256,7 +256,7 @@ struct ScanSaveSheet: View {
             }
             let isSmall = small
             let pwd = usePassword && store.isPro ? password : nil
-            let data: Data? = await Task.detached {
+            let data: Data? = await Task.detached { () -> Data? in
                 let d = PdfTools.pdf(from: imgs, jpegQuality: isSmall ? 0.55 : 0.82, maxSide: isSmall ? 1500 : 2400, textLayers: layers)
                 if let pwd { return PdfTools.encrypt(d, password: pwd) }
                 return d

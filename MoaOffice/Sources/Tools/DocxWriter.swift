@@ -36,17 +36,30 @@ enum DocxWriter {
     }
 
     static func zip(_ entries: [(String, Data)]) -> Data {
-        var out = Data(), central = Data()
-        func u16(_ v: Int) -> Data { var x = UInt16(v).littleEndian; return Data(bytes: &x, count: 2) }
-        func u32(_ v: UInt32) -> Data { var x = v.littleEndian; return Data(bytes: &x, count: 4) }
+        var out = Data()
+        var central = Data()
+        func u16(_ d: inout Data, _ v: Int) { var x = UInt16(v).littleEndian; withUnsafeBytes(of: &x) { d.append(contentsOf: $0) } }
+        func u32(_ d: inout Data, _ v: UInt32) { var x = v.littleEndian; withUnsafeBytes(of: &x) { d.append(contentsOf: $0) } }
         for (name, data) in entries {
-            let n = Data(name.utf8), crc = crc32(data), off = UInt32(out.count)
-            out += u32(0x04034b50) + u16(20) + u16(0x0800) + u16(0) + u16(0) + u16(0x21) + u32(crc) + u32(UInt32(data.count)) + u32(UInt32(data.count)) + u16(n.count) + u16(0) + n + data
-            central += u32(0x02014b50) + u16(20) + u16(20) + u16(0x0800) + u16(0) + u16(0) + u16(0x21) + u32(crc) + u32(UInt32(data.count)) + u32(UInt32(data.count)) + u16(n.count) + u16(0) + u16(0) + u16(0) + u16(0) + u32(0) + u32(off) + n
+            let n = Data(name.utf8)
+            let crc = crc32(data)
+            let off = UInt32(out.count)
+            let size = UInt32(data.count)
+            // 로컬 헤더
+            u32(&out, 0x04034b50); u16(&out, 20); u16(&out, 0x0800); u16(&out, 0); u16(&out, 0); u16(&out, 0x21)
+            u32(&out, crc); u32(&out, size); u32(&out, size); u16(&out, n.count); u16(&out, 0)
+            out.append(n); out.append(data)
+            // 중앙 디렉터리
+            u32(&central, 0x02014b50); u16(&central, 20); u16(&central, 20); u16(&central, 0x0800); u16(&central, 0); u16(&central, 0); u16(&central, 0x21)
+            u32(&central, crc); u32(&central, size); u32(&central, size); u16(&central, n.count); u16(&central, 0); u16(&central, 0)
+            u16(&central, 0); u16(&central, 0); u32(&central, 0); u32(&central, off)
+            central.append(n)
         }
         let cdOff = UInt32(out.count)
-        out += central
-        out += u32(0x06054b50) + u16(0) + u16(0) + u16(entries.count) + u16(entries.count) + u32(UInt32(central.count)) + u32(cdOff) + u16(0)
+        let cdSize = UInt32(central.count)
+        out.append(central)
+        u32(&out, 0x06054b50); u16(&out, 0); u16(&out, 0); u16(&out, entries.count); u16(&out, entries.count)
+        u32(&out, cdSize); u32(&out, cdOff); u16(&out, 0)
         return out
     }
 }

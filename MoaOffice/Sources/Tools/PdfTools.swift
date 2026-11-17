@@ -1,3 +1,4 @@
+import AVFoundation
 import UIKit
 import PDFKit
 
@@ -150,6 +151,5 @@ enum PdfTools {
     static func pageCount(_ url: URL) -> Int { PDFDocument(url: url)?.pageCount ?? 0 }
 }
 
-import AVFoundation
 
 extension Array { subscript(safe i: Int) -> Element? { indices.contains(i) ? self[i] : nil } }
