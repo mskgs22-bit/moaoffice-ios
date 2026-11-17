@@ -21,7 +21,7 @@ enum PdfTools {
             }
             let page = CGRect(origin: .zero, size: pageSize)
             UIGraphicsBeginPDFPageWithInfo(page, nil)
-            let r = AVMakeRect(img.size, in: page)
+            let r = AVMakeRect(aspectRatio: img.size, insideRect: page)
             if let layer = textLayers?[safe: i] { drawInvisibleText(layer, in: r) }
             img.draw(in: r)
         }
